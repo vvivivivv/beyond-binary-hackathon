@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useSpeech } from './hooks/useSpeech';
 import VoiceInterface from './components/multimodal/VoiceInterface';
 import { VOICE_COMMANDS } from '../utils/constants';
-import { LucideStepBack } from 'lucide-react';
+import { summarizeText, askQuestion } from '../lib/huggingface';
 
 function App() {
   const [pageData, setPageData] = useState(null);
@@ -28,7 +28,6 @@ function App() {
         setTargetTabId(tab.id);
       }
     }
-
     if (!tabId) {
       console.error("No target tab found. Please click the webpage once.");
       speakAndTrack("I can't find the webpage. Please click on the page once.");
@@ -90,7 +89,72 @@ function App() {
       speakAndTrack("Please click on the webpage first.");
     }
   };
-  
+
+  const handleSearch = async (query) => {
+    if (!pageData) return;
+    setLoading(true);
+    setSummary("Searching page...");
+    speakAndTrack(`Searching for ${query}`);
+
+    // Deterministic find for exact text matches
+    runCommandOnPage((textToFind) => {
+      const found = window.find(textToFind, false, false, true, false, true, false);
+      if (found) {
+        const sel = window.getSelection();
+        const range = sel.getRangeAt(0);
+        const mark = document.createElement('mark');
+        mark.style.backgroundColor = 'yellow';
+        mark.style.color = 'black';
+        range.surroundContents(mark);
+        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return true;
+      }
+      return false;
+    }, query);
+
+    // AI Fallback (questions)
+    try {
+      const fullText = pageData.mainText.join(" ");
+      const answer = await askQuestion(query, fullText);
+      
+      if (answer && answer.length > 0) {
+        speakAndTrack(`The AI found this: ${answer}`);
+        runCommandOnPage((aiAnswer) => {
+            window.find(aiAnswer, false, false, true, false, true, false);
+        }, answer);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setSummary("");
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!pageData || !pageData.mainText || pageData.mainText.length === 0) {
+      return speakAndTrack("There is no content found to summarize.");
+    }
+    
+    setSummary("A.I. is analyzing the page... please wait.");
+    setLoading(true);
+    speakAndTrack("Generating a summary of the main content.");
+
+    try {
+      const textToAI = pageData.mainText.join(" ");
+      
+      const result = await summarizeText(textToAI);
+      
+      setSummary(result);
+      speakAndTrack("Here is a summary of the page: " + result);
+    } catch (err) {
+      console.error(err);
+      setSummary("The AI engine is currently warming up. Try again in 10 seconds.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleVoiceCommand = (command) => {
     const text = command.toLowerCase();
     const isIntent = (cmdList) => cmdList && cmdList.some(word => text.includes(word));
@@ -99,6 +163,11 @@ function App() {
       speech.stopSpeaking();
       lastReadRef.current = "";
       return; 
+    }
+
+    if (isIntent(VOICE_COMMANDS.SUMMARISE) || text === "summarize") {
+      handleSummarize();
+      return;
     }
 
     if (isIntent(VOICE_COMMANDS.SPEED_UP) || isIntent(VOICE_COMMANDS.SLOW_DOWN)) {
@@ -120,10 +189,10 @@ function App() {
       return;
     }
 
-
     const isAction = text.includes("top") || text.includes("bottom") || text.includes("image") || 
                      text.includes("read") || text.includes("body") || text.includes("content") || 
-                     text.includes("headings") || text.includes("summary") || text.includes("faster") || text.includes("slower");
+                     text.includes("headings") || text.includes("summary") || text.includes("find") || 
+                     text.includes("search") || text.includes("faster") || text.includes("slower");
     
     if (speech.isSpeaking && !isAction) return;
 
@@ -138,16 +207,27 @@ function App() {
       runCommandOnPage(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
     }
 
-    else if (text.includes("image") || isIntent(VOICE_COMMANDS.READ_IMAGES)) {
+    else if (text.includes("image") || text.includes("picture")) {
       if (!pageData || pageData.images.length === 0) return speakAndTrack("No images found.");
-      setImgIndex((prev) => {
-        const newIdx = (prev + 1) % pageData.images.length;
+      
+      setImgIndex((prevIndex) => {
+        const newIdx = (prevIndex + 1) % pageData.images.length;
         const currentImg = pageData.images[newIdx];
+
         speakAndTrack(`Image ${newIdx + 1}: ${currentImg.alt}`);
-        runCommandOnPage((src) => {
-          const target = document.querySelector(`img[src="${src}"]`);
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        runCommandOnPage((targetSrc) => {
+          const allImgs = Array.from(document.querySelectorAll('img'));
+          const target = allImgs.find(img => img.src === targetSrc);
+          
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.style.outline = "8px solid #1a73e8";
+            target.style.outlineOffset = "5px";
+            setTimeout(() => (target.style.outline = "none"), 3000);
+          }
         }, currentImg.src);
+
         return newIdx;
       });
     }
@@ -162,8 +242,9 @@ function App() {
       speakAndTrack("Reading content: " + pageData.mainText.join(". "));
     }
 
-    else if (isIntent(VOICE_COMMANDS.SUMMARIZE)) {
-      handleSummarize();
+    else if (text.includes("find") || text.includes("search") || isIntent(VOICE_COMMANDS.SEARCH)) {
+      const query = text.replace("find", "").replace("search", "").replace("where is", "").replace("show me", "").trim();
+      if (query.length > 0) handleSearch(query);
     }
   };
 
@@ -180,9 +261,18 @@ function App() {
 
       <VoiceInterface speech={speech} onCommand={handleVoiceCommand} pageTitle={pageData?.title} />
 
+      {/* AI SUMMARY BOX */}
+      {summary && (
+        <div style={{ marginTop: '15px', padding: '12px', background: '#fef7e0', borderLeft: '5px solid #f9ab00', borderRadius: '8px' }}>
+          <h4 style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#b06000' }}>AI SUMMARY</h4>
+          <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.4' }}>{summary}</p>
+          <button onClick={() => speakAndTrack(summary)} style={{ marginTop: '5px', fontSize: '10px', background: 'none', border: '1px solid #b06000', color: '#b06000', cursor: 'pointer' }}>Repeat Summary</button>
+        </div>
+      )}
+
       {pageData && (
         <div style={{ marginTop: '20px' }}>
-          <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid #1a73e8' }}>{pageData.title}</h2>
+          <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid #1a73e8', paddingBottom: '5px' }}>{pageData.title}</h2>
           
           <section>
             <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Page Structure</h3>

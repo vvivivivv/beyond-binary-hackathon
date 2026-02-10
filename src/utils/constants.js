@@ -1,7 +1,8 @@
 export const VOICE_COMMANDS = {
   STOP: ['stop', 'shutup', 'quiet', 'pause'],
-  SUMMARIZE: ['summarize', 'summary', 'what is this'],
-  
+  SUMMARIZE: ['summarise', 'summary', 'what is this page', 'gist', 'main points', 'main idea'],  
+  SEARCH: ['find', 'search', 'where is', 'look for', 'show me'],
+
   SPEED_UP: ['faster', 'speed up', 'fast'],
   SLOW_DOWN: ['slower', 'slow down', 'slow'],
   
