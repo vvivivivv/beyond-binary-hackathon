@@ -1,33 +1,64 @@
 import React, { useState } from 'react';
+import { getLocalDescription } from './visionEngine'; // Import the new engine
 
 function App() {
   const [pageData, setPageData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState("");
+
+// Inside your App component
+// ... keep imports
 
   const handleScan = async () => {
+    if (loading) return; 
     setLoading(true);
+    setPageData(null); 
+    setProgress("Scanning page structure...");
     
-    // 1. Find the active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    // 2. Send a message to the Content Script in that tab
-    chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error:", chrome.runtime.lastError);
-        alert("Please refresh the webpage and try again.");
-      } else {
-        console.log("Data received in Side Panel:", response);
-        setPageData(response);
+    chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, async (response) => {
+      if (chrome.runtime.lastError || !response) {
+          setLoading(false);
+          setProgress("Error: Please refresh the webpage.");
+          return;
       }
+
+      setPageData(response);
+      
+      const imagesToProcess = [...response.images];
+      
+      // IMPORTANT: Process images sequentially so memory doesn't overflow
+      for (let i = 0; i < imagesToProcess.length; i++) {
+          const currentImg = imagesToProcess[i];
+          
+          if (!currentImg.isAccessible) {
+              setProgress(`Interpreting image ${i + 1}/${imagesToProcess.length}...`);
+              
+              // Call our two-step Vision Engine
+              const semanticInfo = await getLocalDescription(currentImg.src);
+              
+              // Update only this image in the state array
+              setPageData(prev => {
+                  const updatedList = [...prev.images];
+                  updatedList[i] = { ...updatedList[i], aiInterpretedText: semanticInfo };
+                  return { ...prev, images: updatedList };
+              });
+          }
+      }
+      
+      setProgress("");
       setLoading(false);
     });
   };
+
+// ... rest of file
 
   return (
     <div style={{ padding: '1rem', fontFamily: 'sans-serif' }}>
       <h1>Universal Assist</h1>
       <button onClick={handleScan} disabled={loading} style={{ padding: '10px', width: '100%', cursor: 'pointer' }}>
-        {loading ? "Scanning..." : "Interpret Page"}
+        {loading ? (progress || "Scanning...") : "Interpret Page"}
       </button>
 
       {pageData && (
@@ -46,8 +77,15 @@ function App() {
           <section>
             <h3>Images Analysis</h3>
             {pageData.images.map((img, i) => (
-              <div key={i} style={{ borderBottom: '1px solid #ddd', padding: '5px 0', color: img.isAccessible ? 'green' : 'red' }}>
-                {img.alt}
+              <div key={i} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
+                <div style={{ color: img.isAccessible ? 'green' : '#d93025', fontWeight: 'bold' }}>
+                  {img.alt}
+                </div>
+                {img.aiInterpretedText && (
+                  <div style={{ fontSize: '0.9em', color: '#555', marginTop: '4px', fontStyle: 'italic' }}>
+                    🤖 Detected: {img.aiInterpretedText}
+                  </div>
+                )}
               </div>
             ))}
           </section>
