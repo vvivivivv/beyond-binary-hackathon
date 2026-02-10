@@ -15,7 +15,6 @@ function App() {
   const runCommandOnPage = async (func, arg = null) => {
     let tabId = targetTabId;
     if (!tabId) {
-      console.log("Tab ID lost, searching for active tab...");
       const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
       if (tab) {
         tabId = tab.id;
@@ -54,10 +53,24 @@ function App() {
 
     if (tab){
       setTargetTabId(tab.id);
-      chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (response) => {
+      chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, async (response) => {
         if (chrome.runtime.lastError || !response) {
-          console.warn("Scan message failed, but tab ID is locked.");
-          speech.speak("I've connected to the page, but I'm having trouble reading the content. Try refreshing the webpage.");
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ["content.js"]
+            });
+            setTimeout(() => {
+              chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (res) => {
+                if (res) {
+                  setPageData(res);
+                  speech.speak(`Connection restored. Scanned ${res.title}`);
+                }
+              });
+            }, 500);
+          } catch (err) {
+            speech.speak("Cannot access this page.");
+          }
         } else {
           setPageData(response);
           setImgIndex(-1);
@@ -65,112 +78,88 @@ function App() {
         }
         setLoading(false);
       });
-    }
-    else {
+    } else {
       setLoading(false);
-      speech.speak("Please click on the webpage first so I know which tab to scan.");
+      speech.speak("Please click on the webpage first.");
     }
   };
   
   const handleVoiceCommand = (command) => {
     const text = command.toLowerCase();
+    const isIntent = (cmdList) => cmdList && cmdList.some(word => text.includes(word));
 
-    // Stop command
-    if (VOICE_COMMANDS.STOP.some(word => text.includes(word))) {
+    if (isIntent(VOICE_COMMANDS.STOP)) {
       speech.stopSpeaking();
-      console.log("Action: STOP");
       return; 
     }
 
-    const isNav = text.includes("top") || text.includes("bottom") || text.includes("image");
+    const isAction = text.includes("top") || text.includes("bottom") || text.includes("image") || 
+                     text.includes("read") || text.includes("body") || text.includes("content") || 
+                     text.includes("headings") || text.includes("summary");
+    
+    if (speech.isSpeaking && !isAction) return;
 
-    if (speech.isSpeaking && !isNav) {
-      console.log("Busy speaking, ignoring non-nav command.");
-      return;
-    }
-
-    const isIntent = (cmdList) => cmdList && cmdList.some(word => text.includes(word));
-
-    // Navigation commands
+    // Navigation logic
     if (isIntent(VOICE_COMMANDS.NAV_TOP)) {
-      speech.stopSpeaking(); 
-      console.log("Action: NAV_TOP");
       speech.speak("Going to top.");
       runCommandOnPage(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
-    
+
     else if (isIntent(VOICE_COMMANDS.NAV_BOTTOM)) {
-      speech.stopSpeaking();
-      console.log("Action: NAV_BOTTOM");
       speech.speak("Going to bottom.");
-      runCommandOnPage(() => {
-        window.scrollTo({ 
-            top: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight), 
-            behavior: 'smooth' 
-        });
-      });
+      runCommandOnPage(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
     }
 
-  else if (text.includes("image") || text.includes("picture")) {
-      if (!pageData || pageData.images.length === 0) {
-        speech.speak("No images found on this page.");
-        return;
-      }
+    else if (isIntent(VOICE_COMMANDS.SPEED_UP)) {
+      const newRate = Math.min(speech.rate + 0.2, 2.0);
+      speech.setRate(newRate);
+      speech.speak(`Speed ${newRate.toFixed(1)}`);
+    }
 
-      speech.stopSpeaking();
+    else if (isIntent(VOICE_COMMANDS.SLOW_DOWN)) {
+      const newRate = Math.max(speech.rate - 0.2, 0.5);
+      speech.setRate(newRate);
+      speech.speak(`Speed ${newRate.toFixed(1)}`);
+    }
 
-      setImgIndex((prevIndex) => {
-        const newIdx = (prevIndex + 1) % pageData.images.length;
+    else if (text.includes("image") || isIntent(VOICE_COMMANDS.READ_IMAGES)) {
+      if (!pageData || pageData.images.length === 0) return speech.speak("No images found.");
+      setImgIndex((prev) => {
+        const newIdx = (prev + 1) % pageData.images.length;
         const currentImg = pageData.images[newIdx];
-
-        speech.speak(`Image ${newIdx + 1}: ${currentImg.isAccessible ? currentImg.alt : "Missing description"}`);
-
-        runCommandOnPage((imgSrc) => {
-          const target = document.querySelector(`img[src="${imgSrc}"]`);
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            target.style.outline = "8px solid #1a73e8";
-            target.style.outlineOffset = "5px";
-            target.style.borderRadius = "4px";
-            setTimeout(() => (target.style.outline = "none"), 3000);
-          }
+        speech.speak(`Image ${newIdx + 1}: ${currentImg.alt}`);
+        runCommandOnPage((src) => {
+          const target = document.querySelector(`img[src="${src}"]`);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, currentImg.src);
-
         return newIdx;
       });
     }
 
-    // Information commands (only process if not already speaking to avoid loops)
-    else if (!speech.isSpeaking) {
-        if (isIntent(VOICE_COMMANDS.READ_HEADINGS)) {
-            if (!pageData) return speech.speak("Scan the page first.");
-            speech.speak("The headings are: " + pageData.headings.map(h => h.text).join(", "));
-        }
-        else if (isIntent(VOICE_COMMANDS.READ_IMAGES)) {
-            if (!pageData) return speech.speak("Scan the page first.");
-            speech.speak(`Found ${pageData.images.length} images.`);
-        }
+    else if (isIntent(VOICE_COMMANDS.READ_HEADINGS)) {
+      if (!pageData) return speech.speak("Scan the page first.");
+      speech.speak("The headings are: " + pageData.headings.map(h => h.text).join(", "));
+    }
+
+    else if (isIntent(VOICE_COMMANDS.READ_CONTENT) || text.includes("body")) {
+      if (!pageData || !pageData.mainText || pageData.mainText.length === 0) return speech.speak("No content found.");
+      speech.speak("Reading content: " + pageData.mainText.join(". "));
+    }
+
+    else if (isIntent(VOICE_COMMANDS.SUMMARIZE)) {
+      handleSummarize();
     }
   };
 
   return (
-    <div style={{ padding: '1rem', fontFamily: 'sans-serif' }}>
+    <div style={{ padding: '1rem', fontFamily: 'sans-serif', color: '#333' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <h1 style={{ fontSize: '1.2rem', margin: 0 }}>Universal Assist</h1>
-        <button 
-          onClick={() => window.open(chrome.runtime.getURL('permissions.html'))}
-          style={{ fontSize: '10px', cursor: 'pointer' }}
-        >
-          Setup Mic
-        </button>
+        <h1 style={{ fontSize: '1.2rem', margin: 0, color: '#1a73e8' }}>Universal Assist</h1>
+        <button onClick={() => window.open(chrome.runtime.getURL('permissions.html'))} style={{ fontSize: '10px' }}>Setup Mic</button>
       </div>
       
-      <button 
-        onClick={handleScan} 
-        disabled={loading} 
-        style={{ padding: '10px', width: '100%', cursor: 'pointer', marginBottom: '10px', background: '#1a73e8', color: 'white', border: 'none', borderRadius: '5px' }}
-      >
-        {loading ? "Processing..." : "Interpret Page"}
+      <button onClick={handleScan} disabled={loading} style={{ padding: '12px', width: '100%', cursor: 'pointer', marginBottom: '10px', background: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+        {loading ? "Scanning..." : "Interpret Page"}
       </button>
 
       <VoiceInterface speech={speech} onCommand={handleVoiceCommand} pageTitle={pageData?.title} />
@@ -180,22 +169,28 @@ function App() {
           <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid #1a73e8' }}>{pageData.title}</h2>
           
           <section>
-            <h3>Headings ({pageData.headings.length})</h3>
-            <ul style={{ background: '#f4f4f4', padding: '10px', borderRadius: '5px', fontSize: '13px' }}>
-              {pageData.headings.map((h, i) => <li key={i}><strong>{h.level}:</strong> {h.text}</li>)}
+            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Page Structure</h3>
+            <ul style={{ background: '#f4f4f4', padding: '10px', borderRadius: '8px', fontSize: '13px', listStyle: 'none' }}>
+              {pageData.headings.map((h, i) => (
+                <li key={i} style={{ marginBottom: '5px' }}>
+                  <strong>[{h.level}]</strong> {h.text}
+                </li>
+              ))}
             </ul>
           </section>
 
           <section style={{ marginTop: '15px' }}>
-            <h3>Image Analysis ({pageData.images.length})</h3>
-            <div style={{ fontSize: '13px' }}>
+            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Main Content</h3>
+            <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', fontSize: '12px', border: '1px solid #eee', maxHeight: '150px', overflowY: 'auto' }}>
+              {pageData.mainText.map((txt, i) => <p key={i} style={{ marginBottom: '8px' }}>{txt}</p>)}
+            </div>
+          </section>
+
+          <section style={{ marginTop: '15px' }}>
+            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Image Analysis ({pageData.images.length})</h3>
+            <div style={{ fontSize: '12px' }}>
               {pageData.images.map((img, i) => (
-                <div key={i} style={{ 
-                  borderBottom: '1px solid #ddd', 
-                  padding: '5px 0', 
-                  color: img.isAccessible ? '#1e8e3e' : '#d93025',
-                  background: imgIndex === i ? '#fff3cd' : 'transparent' // Highlight current image in list
-                }}>
+                <div key={i} style={{ borderBottom: '1px solid #eee', padding: '8px 0', color: img.isAccessible ? '#1e8e3e' : '#d93025', background: imgIndex === i ? '#fff3cd' : 'transparent' }}>
                   {img.isAccessible ? `✓ ${img.alt}` : `⚠ Missing: ${img.alt}`}
                 </div>
               ))}
