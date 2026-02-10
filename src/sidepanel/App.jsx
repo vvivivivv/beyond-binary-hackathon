@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSpeech } from './hooks/useSpeech';
 import VoiceInterface from './components/multimodal/VoiceInterface';
 import { VOICE_COMMANDS } from '../utils/constants';
+import { LucideStepBack } from 'lucide-react';
 
 function App() {
   const [pageData, setPageData] = useState(null);
@@ -11,6 +12,12 @@ function App() {
   const [imgIndex, setImgIndex] = useState(-1);
   
   const speech = useSpeech();  
+  const lastReadRef = useRef("");
+
+  const speakAndTrack = (text) => {
+    lastReadRef.current = text;
+    speech.speak(text);
+  };
 
   const runCommandOnPage = async (func, arg = null) => {
     let tabId = targetTabId;
@@ -24,7 +31,7 @@ function App() {
 
     if (!tabId) {
       console.error("No target tab found. Please click the webpage once.");
-      speech.speak("I can't find the webpage. Please click on the page once.");
+      speakAndTrack("I can't find the webpage. Please click on the page once.");
       return;
     }
 
@@ -64,23 +71,23 @@ function App() {
               chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (res) => {
                 if (res) {
                   setPageData(res);
-                  speech.speak(`Connection restored. Scanned ${res.title}`);
+                  speakAndTrack(`Connection restored. Scanned ${res.title}`);
                 }
               });
             }, 500);
           } catch (err) {
-            speech.speak("Cannot access this page.");
+            speakAndTrack("Cannot access this page.");
           }
         } else {
           setPageData(response);
           setImgIndex(-1);
-          speech.speak(`Scanned ${response.title}.`);
+          speakAndTrack(`Scanned ${response.title}.`);
         }
         setLoading(false);
       });
     } else {
       setLoading(false);
-      speech.speak("Please click on the webpage first.");
+      speakAndTrack("Please click on the webpage first.");
     }
   };
   
@@ -90,44 +97,53 @@ function App() {
 
     if (isIntent(VOICE_COMMANDS.STOP)) {
       speech.stopSpeaking();
+      lastReadRef.current = "";
       return; 
     }
 
+    if (isIntent(VOICE_COMMANDS.SPEED_UP) || isIntent(VOICE_COMMANDS.SLOW_DOWN)) {
+      const isUp = isIntent(VOICE_COMMANDS.SPEED_UP);
+      const newRate = isUp 
+        ? Math.min(speech.rate + 0.4, 3.0) 
+        : Math.max(speech.rate - 0.4, 0.5);
+      
+      speech.setRate(newRate);
+      console.log("New Speed:", newRate);
+
+      if (lastReadRef.current) {
+        setTimeout(() => {
+          speakAndTrack(lastReadRef.current);
+        }, 50);
+      } else {
+        speakAndTrack(isUp ? "Faster" : "Slower");
+      }
+      return;
+    }
+
+
     const isAction = text.includes("top") || text.includes("bottom") || text.includes("image") || 
                      text.includes("read") || text.includes("body") || text.includes("content") || 
-                     text.includes("headings") || text.includes("summary");
+                     text.includes("headings") || text.includes("summary") || text.includes("faster") || text.includes("slower");
     
     if (speech.isSpeaking && !isAction) return;
 
     // Navigation logic
     if (isIntent(VOICE_COMMANDS.NAV_TOP)) {
-      speech.speak("Going to top.");
+      speakAndTrack("Going to top.");
       runCommandOnPage(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
 
     else if (isIntent(VOICE_COMMANDS.NAV_BOTTOM)) {
-      speech.speak("Going to bottom.");
+      speakAndTrack("Going to bottom.");
       runCommandOnPage(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
     }
 
-    else if (isIntent(VOICE_COMMANDS.SPEED_UP)) {
-      const newRate = Math.min(speech.rate + 0.2, 2.0);
-      speech.setRate(newRate);
-      speech.speak(`Speed ${newRate.toFixed(1)}`);
-    }
-
-    else if (isIntent(VOICE_COMMANDS.SLOW_DOWN)) {
-      const newRate = Math.max(speech.rate - 0.2, 0.5);
-      speech.setRate(newRate);
-      speech.speak(`Speed ${newRate.toFixed(1)}`);
-    }
-
     else if (text.includes("image") || isIntent(VOICE_COMMANDS.READ_IMAGES)) {
-      if (!pageData || pageData.images.length === 0) return speech.speak("No images found.");
+      if (!pageData || pageData.images.length === 0) return speakAndTrack("No images found.");
       setImgIndex((prev) => {
         const newIdx = (prev + 1) % pageData.images.length;
         const currentImg = pageData.images[newIdx];
-        speech.speak(`Image ${newIdx + 1}: ${currentImg.alt}`);
+        speakAndTrack(`Image ${newIdx + 1}: ${currentImg.alt}`);
         runCommandOnPage((src) => {
           const target = document.querySelector(`img[src="${src}"]`);
           if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -137,13 +153,13 @@ function App() {
     }
 
     else if (isIntent(VOICE_COMMANDS.READ_HEADINGS)) {
-      if (!pageData) return speech.speak("Scan the page first.");
-      speech.speak("The headings are: " + pageData.headings.map(h => h.text).join(", "));
+      if (!pageData) return speakAndTrack("Scan the page first.");
+      speakAndTrack("The headings are: " + pageData.headings.map(h => h.text).join(", "));
     }
 
     else if (isIntent(VOICE_COMMANDS.READ_CONTENT) || text.includes("body")) {
-      if (!pageData || !pageData.mainText || pageData.mainText.length === 0) return speech.speak("No content found.");
-      speech.speak("Reading content: " + pageData.mainText.join(". "));
+      if (!pageData || !pageData.mainText || pageData.mainText.length === 0) return speakAndTrack("No content found.");
+      speakAndTrack("Reading content: " + pageData.mainText.join(". "));
     }
 
     else if (isIntent(VOICE_COMMANDS.SUMMARIZE)) {

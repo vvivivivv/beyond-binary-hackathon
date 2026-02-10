@@ -1,12 +1,18 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export const useSpeech = () => {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [rate, setRate] = useState(1.0);
+  const [rate, setRateState] = useState(1.0);
   
+  const rateRef = useRef(1.0);
   const shouldBeListening = useRef(false); 
   const recognitionRef = useRef(null);
+
+  const setRate = (newRate) => {
+    rateRef.current = newRate;
+    setRateState(newRate);
+  };
 
   const speak = useCallback((text) => {
     if (!text) return;
@@ -14,17 +20,15 @@ export const useSpeech = () => {
     chrome.tts.stop();
 
     chrome.tts.speak(text, {
-      rate: rate,
+      rate: rateRef.current,
       onEvent: (event) => {
-        if (event.type === 'start') {
-          setIsSpeaking(true);
-        }
+        if (event.type === 'start') setIsSpeaking(true);
         if (event.type === 'end' || event.type === 'interrupted' || event.type === 'error') {
           setIsSpeaking(false);
         }
       }
     });
-  }, [rate]);
+  }, []);
 
   const stopSpeaking = useCallback(() => {
     chrome.tts.stop();
