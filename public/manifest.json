@@ -18,5 +18,8 @@
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": ["sidePanel", "scripting", "storage", "activeTab"]
+  "permissions": ["sidePanel", "scripting", "storage", "activeTab", "audio"],
+  "host_permissions": [
+    "<all_urls>"
+  ]
 }

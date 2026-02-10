@@ -1,8 +1,21 @@
 export const scanPage = () => {
-  const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4")).map(h => ({
+  // Find real headings
+  let headings = Array.from(document.querySelectorAll("h1, h2, h3, h4")).map(h => ({
     level: h.tagName,
     text: h.innerText.trim()
   })).filter(h => h.text.length > 0);
+
+  // If no headings are found, look for bold text that looks like a heading
+  if (headings.length === 0) {
+    headings = Array.from(document.querySelectorAll("b, strong, span"))
+      .filter(el => {
+        const style = window.getComputedStyle(el);
+        const fontSize = parseFloat(style.fontSize);
+        return fontSize > 18;
+      })
+      .slice(0, 5)
+      .map(h => ({ level: "Inferred", text: h.innerText.trim() }));
+  }
 
   const images = Array.from(document.querySelectorAll("img")).map(img => ({
     src: img.src,
