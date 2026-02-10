@@ -122,14 +122,10 @@ const UserProfile = ({ onProfileChange }) => {
   return (
     <div className="user-profile">
       <div className="profile-header">
-        <User size={24} />
         <h2>Accessibility Profile</h2>
-        <button 
-          className="settings-toggle"
-          onClick={() => setShowSettings(!showSettings)}
-          aria-label="Toggle settings"
-        >
-          <Settings size={20} />
+          <button className="save-button" onClick={saveProfile}>
+          <Save size={20} />
+          Save Profile
         </button>
       </div>
 
@@ -158,144 +154,140 @@ const UserProfile = ({ onProfileChange }) => {
           ))}
         </div>
       </div>
-
-      {showSettings && (
-        <>
-          {/* Input Modes */}
-          <div className="profile-section">
-            <h3>Input Methods</h3>
-            <div className="mode-toggles">
-              {[
-                { key: 'voice', label: 'Voice Commands', icon: Volume2 },
-                { key: 'text', label: 'Text Input', icon: Settings },
-                { key: 'camera', label: 'Camera / Gestures', icon: Eye },
-                { key: 'touch', label: 'Large Touch Targets', icon: Hand }
-              ].map(({ key, label, icon: Icon }) => (
-                <label key={key} className="mode-toggle">
-                  <input
-                    type="checkbox"
-                    checked={profile.inputModes[key]}
-                    onChange={() => toggleInputMode(key)}
-                  />
-                  <Icon size={18} />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Output Modes */}
-          <div className="profile-section">
-            <h3>Output Methods</h3>
-            <div className="mode-toggles">
-              {[
-                { key: 'speech', label: 'Text-to-Speech', icon: Volume2 },
-                { key: 'visual', label: 'Visual Display', icon: Eye }
-              ].map(({ key, label, icon: Icon }) => (
-                <label key={key} className="mode-toggle">
-                  <input
-                    type="checkbox"
-                    checked={profile.outputModes[key]}
-                    onChange={() => toggleOutputMode(key)}
-                  />
-                  <Icon size={18} />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Preferences */}
-          <div className="profile-section">
-            <h3>Preferences</h3>
-            
-            {/* Font Size */}
-            <div className="preference-control">
-              <label htmlFor="fontSize">Font Size: {profile.preferences.fontSize}px</label>
+      
+      {/* Input Modes */}
+      <div className="profile-section">
+        <h3>Input Methods</h3>
+        <div className="mode-toggles">
+          {[
+            { key: 'voice', label: 'Voice Commands', icon: Volume2 },
+            { key: 'text', label: 'Text Input', icon: Settings },
+            { key: 'camera', label: 'Camera / Gestures', icon: Eye },
+            { key: 'touch', label: 'Large Touch Targets', icon: Hand }
+          ].map(({ key, label, icon: Icon }) => (
+            <label key={key} className="mode-toggle">
               <input
-                id="fontSize"
-                type="range"
-                min="12"
-                max="32"
-                value={profile.preferences.fontSize}
-                onChange={(e) => updatePreference('fontSize', parseInt(e.target.value))}
+                type="checkbox"
+                checked={profile.inputModes[key]}
+                onChange={() => toggleInputMode(key)}
               />
-            </div>
+              <Icon size={18} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
 
-            {/* Contrast */}
-            <div className="preference-control">
-              <label htmlFor="contrast">Contrast</label>
-              <select
-                id="contrast"
-                value={profile.preferences.contrast}
-                onChange={(e) => updatePreference('contrast', e.target.value)}
-              >
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="maximum">Maximum</option>
-              </select>
-            </div>
+      {/* Output Modes */}
+      <div className="profile-section">
+        <h3>Output Methods</h3>
+        <div className="mode-toggles">
+          {[
+            { key: 'speech', label: 'Text-to-Speech', icon: Volume2 },
+            { key: 'visual', label: 'Visual Display', icon: Eye }
+          ].map(({ key, label, icon: Icon }) => (
+            <label key={key} className="mode-toggle">
+              <input
+                type="checkbox"
+                checked={profile.outputModes[key]}
+                onChange={() => toggleOutputMode(key)}
+              />
+              <Icon size={18} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
 
-            {/* Color Scheme */}
-            <div className="preference-control">
-              <label htmlFor="colorScheme">Color Scheme</label>
-              <select
-                id="colorScheme"
-                value={profile.preferences.colorScheme}
-                onChange={(e) => updatePreference('colorScheme', e.target.value)}
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="high-contrast">High Contrast</option>
-              </select>
-            </div>
+      {/* Preferences */}
+      <div className="profile-section">
+        <h3>Preferences</h3>
+        
+        {/* Font Size */}
+        <div className="preference-control">
+          <label htmlFor="fontSize">Font Size: {profile.preferences.fontSize}px</label>
+          <input
+            id="fontSize"
+            type="range"
+            min="12"
+            max="32"
+            value={profile.preferences.fontSize}
+            onChange={(e) => updatePreference('fontSize', parseInt(e.target.value))}
+          />
+        </div>
 
-            {/* Speech Rate */}
-            {profile.outputModes.speech && (
-              <div className="preference-control">
-                <label htmlFor="speechRate">Speech Rate: {profile.preferences.speechRate}x</label>
-                <input
-                  id="speechRate"
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.1"
-                  value={profile.preferences.speechRate}
-                  onChange={(e) => updatePreference('speechRate', parseFloat(e.target.value))}
-                />
-              </div>
-            )}
+        {/* Contrast */}
+        <div className="preference-control">
+          <label htmlFor="contrast">Contrast</label>
+          <select
+            id="contrast"
+            value={profile.preferences.contrast}
+            onChange={(e) => updatePreference('contrast', e.target.value)}
+          >
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="maximum">Maximum</option>
+          </select>
+        </div>
 
-            {/* Speech Volume */}
-            {profile.outputModes.speech && (
-              <div className="preference-control">
-                <label htmlFor="speechVolume">Speech Volume: {Math.round(profile.preferences.speechVolume * 100)}%</label>
-                <input
-                  id="speechVolume"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={profile.preferences.speechVolume}
-                  onChange={(e) => updatePreference('speechVolume', parseFloat(e.target.value))}
-                />
-              </div>
-            )}
+        {/* Color Scheme */}
+        <div className="preference-control">
+          <label htmlFor="colorScheme">Color Scheme</label>
+          <select
+            id="colorScheme"
+            value={profile.preferences.colorScheme}
+            onChange={(e) => updatePreference('colorScheme', e.target.value)}
+          >
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="high-contrast">High Contrast</option>
+          </select>
+        </div>
 
-            {/* Auto Adjust */}
-            <div className="preference-control">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={profile.preferences.autoAdjust}
-                  onChange={(e) => updatePreference('autoAdjust', e.target.checked)}
-                />
-                Auto-adjust based on environment
-              </label>
-            </div>
+        {/* Speech Rate */}
+        {profile.outputModes.speech && (
+          <div className="preference-control">
+            <label htmlFor="speechRate">Speech Rate: {profile.preferences.speechRate}x</label>
+            <input
+              id="speechRate"
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={profile.preferences.speechRate}
+              onChange={(e) => updatePreference('speechRate', parseFloat(e.target.value))}
+            />
           </div>
-        </>
-      )}
+        )}
+
+        {/* Speech Volume */}
+        {profile.outputModes.speech && (
+          <div className="preference-control">
+            <label htmlFor="speechVolume">Speech Volume: {Math.round(profile.preferences.speechVolume * 100)}%</label>
+            <input
+              id="speechVolume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={profile.preferences.speechVolume}
+              onChange={(e) => updatePreference('speechVolume', parseFloat(e.target.value))}
+            />
+          </div>
+        )}
+
+        {/* Auto Adjust */}
+        <div className="preference-control">
+          <label>
+            <input
+              type="checkbox"
+              checked={profile.preferences.autoAdjust}
+              onChange={(e) => updatePreference('autoAdjust', e.target.checked)}
+            />
+            Auto-adjust based on environment
+          </label>
+        </div>
+      </div>
 
       {/* Save Button */}
       <button className="save-button" onClick={saveProfile}>

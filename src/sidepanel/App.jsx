@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import UserProfile from './components/profile/UserProfile';
 import SimplifiedView from './components/display/SimplifiedView';
+//import GestureCamera from './components/multimodal/GestureCamera';
+//import VoiceInterface from './components/multimodal/VoiceInterface';
 import { Menu, X } from 'lucide-react';
 
 function App() {
@@ -93,9 +95,12 @@ function App() {
 
       {/* Profile Panel (Collapsible) */}
       {showProfile && (
-        <aside className="profile-panel">
-          <UserProfile onProfileChange={handleProfileChange} />
-        </aside>
+        <div className="profile-panel">
+          <UserProfile
+            onProfileChange={setUserProfile}
+            onClose={() => setShowProfile(false)}
+          />
+        </div>
       )}
 
       {/* Main Content Area */}
@@ -110,14 +115,6 @@ function App() {
           >
             Simplified View
           </button>
-          <button
-            role="tab"
-            aria-selected={currentView === 'info'}
-            onClick={() => setCurrentView('info')}
-            className={currentView === 'info' ? 'active' : ''}
-          >
-            Page Info
-          </button>
         </nav>
 
         {/* Content Display */}
@@ -129,65 +126,34 @@ function App() {
             />
           )}
           
-          {currentView === 'info' && (
-            <div className="info-view">
-              <h2>Page Information</h2>
-              <div className="info-card">
-                <h3>Profile Status</h3>
-                {userProfile ? (
-                  <div>
-                    <p><strong>Mode:</strong> {userProfile.disabilityType}</p>
-                    <p><strong>Font Size:</strong> {userProfile.preferences.fontSize}px</p>
-                    <p><strong>Theme:</strong> {userProfile.preferences.colorScheme}</p>
-                    <p><strong>Speech:</strong> {userProfile.outputModes.speech ? 'Enabled' : 'Disabled'}</p>
-                  </div>
-                ) : (
-                  <p>No profile configured. Click the menu icon to set up your profile.</p>
-                )}
-              </div>
-              
-              <div className="info-card">
-                <h3>Features Available</h3>
-                <ul>
-                  <li>✅ Profile System - Configure accessibility preferences</li>
-                  <li>✅ Theme Customization - Light, Dark, High Contrast</li>
-                  <li>✅ Font Scaling - 12px to 32px</li>
-                  <li>✅ Speech Output - Text-to-speech support</li>
-                </ul>
-              </div>
-
-              <div className="info-card">
-                <h3>Coming Soon</h3>
-                <ul>
-                  <li>🎤 Voice Interface - Voice commands</li>
-                  <li>👋 Gesture Camera - Hand gesture controls</li>
-                  <li>🔍 Accessibility Checker - Page analysis</li>
-                  <li>🖼️ AI Image Descriptions</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
           {!pageData && currentView === 'simplified' && (
             <div className="no-data">
               <h2>Welcome to Accessibility Assistant</h2>
-              <p>Navigate to a webpage to see simplified content.</p>
               <p>Click the menu icon above to configure your accessibility profile.</p>
             </div>
           )}
         </div>
       </main>
 
+      {/*{userProfile?.inputModes.voice && (
+        <VoiceInterface profile={userProfile} />
+      )}
+
+      {userProfile?.inputModes.camera && (
+        <GestureCamera profile={userProfile} />
+      )}*/}
+
+
       {/* Status Bar */}
       <footer className="app-footer">
         <div className="status-indicators">
           {userProfile?.inputModes.voice && (
-            <span className="indicator voice-active" title="Voice input ready (coming soon)">
+            <span className="indicator voice-active" title="Voice input ready">
               🎤
             </span>
           )}
           {userProfile?.inputModes.camera && (
-            <span className="indicator camera-active" title="Camera ready (coming soon)">
+            <span className="indicator camera-active" title="Camera ready">
               📷
             </span>
           )}
