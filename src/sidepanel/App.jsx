@@ -35,13 +35,34 @@ function App() {
   // 3. Regular Webpage logic
   chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (response) => {
     if (chrome.runtime.lastError) {
-      console.warn("Content script not found, likely a protected page.");
-      setPageData({
-        title: "Web Document",
-        headings: [], links: [], images: [],
-        pdfs: [{ id: 'fallback', text: 'Document URL', href: tab.url }]
-      });
-    } else {
+  const url = tab.url.toLowerCase();
+
+  if (url.endsWith('.pdf')) {
+    setPageData({
+      title: "PDF Document",
+      headings: [], links: [], images: [],
+      pdfs: [{ id: url, text: 'Current Document', href: tab.url }]
+    });
+  } else if (url.match(/\.(jpg|jpeg|png|webp)$/)) {
+    setPageData({
+      title: "Image Document",
+      headings: [], links: [], pdfs: [],
+      images: [{
+        id: url,
+        src: tab.url,
+        alt: 'Direct Image',
+        isAccessible: true,
+        isOCRCandidate: true
+      }]
+    });
+  } else {
+    setPageData({
+      title: "Web Document",
+      headings: [], links: [], images: [], pdfs: []
+    });
+  }
+}
+else {
       setPageData(response);
     }
     setLoading(false);
@@ -107,7 +128,6 @@ function App() {
               ))}
             </div>
           </section>
-
         </div>
       )}
     </div>

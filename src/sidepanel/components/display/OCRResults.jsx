@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { performOCR } from '../../../lib/tesseract'; 
 import { convertPdfToImage } from '../../../lib/pdfEngine'; // Import the PDF conversion utility
 import { Loader2, AlertCircle, FileType, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { prepareImageForOCR } from '../../../lib/imageEngine';
 
 const OCRResults = ({ images, pdfs }) => {
   const [ocrData, setOcrData] = useState({}); // Stores results by ID: { id: "OCR Text" }
@@ -16,7 +17,7 @@ const OCRResults = ({ images, pdfs }) => {
 
     try {
       let text = "";
-      if (item.href) { // It's a PDF (identified by href)
+      if (item.href && item.href.toLowerCase().endsWith('.pdf')) { // It's a PDF (identified by href)
         console.log(`[OCRResults] Starting PDF conversion for: ${item.href}`);
         const imageData = await convertPdfToImage(item.href);
         console.log(`[OCRResults] PDF converted to image data. Running OCR...`);
@@ -24,7 +25,8 @@ const OCRResults = ({ images, pdfs }) => {
         console.log(`[OCRResults] OCR for PDF completed: ${text.substring(0, 50)}...`);
       } else if (item.src) { // It's an Image (identified by src)
         console.log(`[OCRResults] Starting OCR for image: ${item.src}`);
-        text = await performOCR(item.src);
+        const imageData = await prepareImageForOCR(item.src);
+        text = await performOCR(imageData);
         console.log(`[OCRResults] OCR for image completed: ${text.substring(0, 50)}...`);
       }
 
