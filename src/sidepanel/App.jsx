@@ -10,6 +10,13 @@ import UserProfile from './components/profile/UserProfile';
 import OCRResults from './components/display/OCRResults';
 import { FileText } from 'lucide-react';
 
+const DEFAULT_PROFILE = {
+  preferences: {
+    fontSize: 16,
+    contrast: 'normal',
+    speechRate: 1.0
+  }};
+
 function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [pageData, setPageData] = useState(null);
@@ -20,6 +27,7 @@ function App() {
   const [progress, setProgress] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
+  const [isPdfDocument, setIsPdfDocument] = useState(false);
 
   const speech = useSpeech();  
   const lastReadRef = useRef("");
@@ -40,10 +48,9 @@ function App() {
   // Initial Load: Preferences & Theme
   useEffect(() => {
     chrome.storage.sync.get(['userProfile'], (result) => {
-      if (result.userProfile) {
-        setUserProfile(result.userProfile);
-        applyTheme(result.userProfile);
-      }
+      const initialProfile = result.userProfile || DEFAULT_PROFILE;
+      setUserProfile(initialProfile);
+      applyTheme(initialProfile);
       setIsLoading(false);
     });
   }, []);
@@ -52,6 +59,7 @@ function App() {
     if (!profile) return;
     const { preferences } = profile;
     const root = document.documentElement;
+
     root.style.fontSize = `${preferences.fontSize}px`; 
     root.style.setProperty('--base-font-size', `${preferences.fontSize}px`);
     
@@ -62,6 +70,7 @@ function App() {
     };
 
     const style = contrastStyles[preferences.contrast] || contrastStyles.normal;
+    
     root.style.setProperty('--bg-main', style.bg);
     root.style.setProperty('--text-main', style.text);
     root.style.setProperty('--accent-main', style.accent);
@@ -171,6 +180,7 @@ function App() {
 
     // Branch 1: PDF Handling (OCR Restricted to here)
     if (url.endsWith('.pdf')) {
+      setIsPdfDocument(true);
       setProgress("Converting PDF document...");
       speakAndTrack("PDF detected. Converting document for extraction.");
       try {
@@ -181,9 +191,9 @@ function App() {
         const pdfResponse = {
           title: "PDF Document",
           headings: [{level: "H1", text: "Extracted Text"}],
-          images: [{ id: 'pdf-page', src: pdfImg, alt: 'PDF Visual Scan', isOCRCandidate: true, ocrText: ocrText }],
+          images: [{ id: 'pdf-page', src: pdfImg, alt: 'PDF Visual Scan', isOCRCandidate: true, ocrText: ocrText, status: 'completed' }],
           mainText: [ocrText],
-          pdfs: [{ id: url, text: 'PDF Document', src: tab.url }]
+          pdfs: []
         };
         setPageData(pdfResponse);
         speakAndTrack("OCR complete. I have extracted the text.");
@@ -197,6 +207,7 @@ function App() {
     }
 
     // Branch 2: Standard HTML Handling
+    setIsPdfDocument(false);
     chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, async (response) => {
       if (chrome.runtime.lastError || !response) {
         setProgress("Injecting logic...");
@@ -204,7 +215,10 @@ function App() {
           await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
           setTimeout(() => {
             chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (res) => {
-              if (res) processData(res);
+              if (res) {
+                const cleaned = { ...res, images: res.images?.map(img => ({ ...img, isOCRCandidate: false })) };
+                processData(res);
+              }
               else { setLoading(false); speakAndTrack("I can't reach the page."); }
             });
           }, 600);
@@ -237,10 +251,16 @@ function App() {
       const found = window.find(textToFind, false, false, true, false, true, false);
       if (found) {
         const sel = window.getSelection();
-        const parent = sel.getRangeAt(0).startContainer.parentElement;
-        parent.style.outline = "5px solid #f9ab00";
-        parent.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => parent.style.outline = "none", 4000);
+        if (sel.rangeCount > 0) {
+          const parent = sel.getRangeAt(0).startContainer.parentElement;
+          parent.style.outline = "5px solid #f9ab00";
+          parent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          setTimeout(() => {
+            parent.style.outline = "none";
+            window.getSelection().removeAllRanges();
+          }, 4000);
+        }
       }
     }, query);
 
@@ -276,10 +296,20 @@ function App() {
         const next = (prev + 1) % pageData.images.length;
         const img = pageData.images[next];
         speakAndTrack(`Image ${next + 1}: ${img.alt}`);
+
         runCommandOnPage((src) => {
           const el = Array.from(document.querySelectorAll('img')).find(i => i.src === src);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.style.outline = "8px solid #1a73e8";
+            el.style.outlineOffset = "5px";
+            el.style.transition = "outline 0.3s ease";
+            setTimeout(() => {
+              el.style.outline = "none";
+            }, 3000);
+          }
         }, img.src);
+        
         return next;
       });
       return;
@@ -351,8 +381,23 @@ function App() {
       {/* AI SUMMARY BOX */}
       {summary && (
         <div style={{ marginTop: '1em', padding: '1em', background: '#fef7e0', borderLeft: '0.4em solid var(--accent-main)', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
-          <p style={{ margin: 0, fontSize: '0.9em', lineHeight: '1.4' }}>{summary}</p>
-          <button onClick={() => speakAndTrack(summary)} style={{ marginTop: '0.8em', fontSize: '0.7em', background: 'var(--bg-main)', color: 'white', border: '1px solid var(--accent-main)', borderRadius: '4px', cursor: 'pointer' }}>🔊 Repeat</button>
+          <h4 style={{ margin: '0 0 0.5em 0', fontSize: '0.7em', color: 'var(--text-main)', textTransform: 'uppercase', opacity: 0.8 }}>Agent Interpretation</h4>
+          <p style={{ margin: 0, fontSize: '0.9em', lineHeight: '1.4', color: '#000' }}>{summary}</p>
+          <button 
+            onClick={() => speakAndTrack(summary)} 
+            style={{ 
+              marginTop: '0.8em', 
+              fontSize: '0.7em', 
+              background: 'var(--bg-main)', 
+              color: '#000',
+              border: '1px solid var(--accent-main)', 
+              borderRadius: '4px', 
+              cursor: 'pointer',
+              padding: '2px 8px'
+            }}
+          >
+            🔊 Repeat
+          </button>
         </div>
       )}
 
@@ -361,12 +406,12 @@ function App() {
         <div style={{ marginTop: '1.5em' }}>
           <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid var(--accent-main)', paddingBottom: '0.3em' }}>{pageData.title}</h2>
           
-          {pageData.pdfs?.length > 0 && (
+          {isPdfDocument && (
             <section>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>
                 <FileText size={18} color="var(--accent-main)"/> Document OCR
               </h3>
-              <OCRResults images={pageData.images} pdfs={pageData.pdfs} />
+              <OCRResults images={pageData.images} pdfs={[]} />
             </section>
           )}
 
