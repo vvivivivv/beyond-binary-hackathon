@@ -57,3 +57,4 @@ dkms.conf
 # Environment files
 .env
 .venv
+node_modules
