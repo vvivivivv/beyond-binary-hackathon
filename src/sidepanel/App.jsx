@@ -140,25 +140,40 @@ function App() {
   };
 
   const handleSearch = async (query) => {
-    if (!pageData) return;
+    if (!pageData || !pageData.mainText) return;
     setLoading(true);
-    setSummary("Searching page...");
+    setSummary(`Searching for "${query}" and interpreting context...`);
     speakAndTrack(`Searching for ${query}`);
 
+    // Scroll and highlight with a temporary outline (No HTML modification)
     // Deterministic find for exact text matches
     runCommandOnPage((textToFind) => {
+      window.getSelection().removeAllRanges();
       const found = window.find(textToFind, false, false, true, false, true, false);
+      
       if (found) {
-        const sel = window.getSelection();
-        const range = sel.getRangeAt(0);
-        const mark = document.createElement('mark');
-        mark.style.backgroundColor = 'yellow';
-        mark.style.color = 'black';
-        range.surroundContents(mark);
-        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return true;
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const parentEl = range.startContainer.parentElement;
+          
+          const originalOutline = parentEl.style.outline;
+          const originalBg = parentEl.style.backgroundColor;
+          
+          parentEl.style.outline = "5px solid #f9ab00";
+          parentEl.style.outlineOffset = "4px";
+          parentEl.style.transition = "outline 0.3s ease";
+          parentEl.style.backgroundColor = "rgba(249, 171, 0, 0.2)";
+          parentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // Remove highlight after 4 seconds (Agent is temporary)
+          setTimeout(() => {
+            parentEl.style.outline = originalOutline;
+            parentEl.style.backgroundColor = originalBg;
+            window.getSelection().removeAllRanges();
+          }, 4000);
+        }
       }
-      return false;
     }, query);
 
     // AI Fallback (questions)
@@ -167,16 +182,12 @@ function App() {
       const answer = await askQuestion(query, fullText);
       
       if (answer && answer.length > 0) {
-        speakAndTrack(`The AI found this: ${answer}`);
-        runCommandOnPage((aiAnswer) => {
-            window.find(aiAnswer, false, false, true, false, true, false);
-        }, answer);
-      }
+        speakAndTrack(`AI Interpretation: ${answer}`);
+        setSummary(`I found "${query}" on the page. AI Context: ${answer}`);      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
-      setSummary("");
     }
   };
 
@@ -312,10 +323,23 @@ function App() {
 
       {/* AI SUMMARY BOX */}
       {summary && (
-        <div style={{ marginTop: '15px', padding: '12px', background: '#fef7e0', borderLeft: '5px solid #f9ab00', borderRadius: '8px' }}>
-          <h4 style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#b06000' }}>AI SUMMARY</h4>
-          <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.4' }}>{summary}</p>
-          <button onClick={() => speakAndTrack(summary)} style={{ marginTop: '5px', fontSize: '10px', background: 'none', border: '1px solid #b06000', color: '#b06000', cursor: 'pointer' }}>Repeat Summary</button>
+        <div style={{ 
+          marginTop: '15px', padding: '12px', 
+          background: '#fef7e0', borderLeft: '5px solid #f9ab00', 
+          borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        }}>
+          <h4 style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#b06000', textTransform: 'uppercase' }}>
+            Agent Interpretation
+          </h4>
+          <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.4', color: '#3c4043' }}>
+            {summary}
+          </p>
+          <button 
+            onClick={() => speakAndTrack(summary)} 
+            style={{ marginTop: '8px', fontSize: '10px', background: 'white', border: '1px solid #f9ab00', borderRadius: '4px', cursor: 'pointer', padding: '2px 8px' }}
+          >
+            🔊 Repeat
+          </button>
         </div>
       )}
 
@@ -342,7 +366,7 @@ function App() {
           </section>
 
           <section>
-            <h3>Images Analysis ({pageData.images.length})</h3>
+            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Images Analysis ({pageData.images.length})</h3>
             {pageData.images.map((img, i) => (
               <div key={i} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
                 <div style={{ color: img.isAccessible ? 'green' : '#d93025', fontWeight: 'bold' }}>
