@@ -91,7 +91,7 @@ The extension is built with React.js and Chrome Extension Manifest V3.
    - Navigate to `chrome://extensions/` in Chrome
    - Enable `Developer` mode
    - Click `Load Unpacked` and select the generated `dist/` folder
-   The extension should now appear in your Chrome toolbar. Click on the Puzzle Icon and pin the extension.
+   - The extension should now appear in your Chrome toolbar. Click on the Puzzle Icon and pin the extension.
 
 5. Testing:
     Accessibility Testing Page
@@ -109,7 +109,7 @@ The extension is built with React.js and Chrome Extension Manifest V3.
    - Right click the extension and `Open Side Panel`
    - Click the Setup Mic button in the extension header
    - Grant microphone permissions when prompted
-   This enables voice-related features (eg. speech recognition).
+   - This enables voice-related features (eg. speech recognition).
 
 ---
 
@@ -140,6 +140,7 @@ Our architecture is designed to be an extensible foundation for future assistive
 ---
 
 > Universal Assist — *Fostering inclusive communities by interpreting the world, one page at a time.*
+
 
 
 
