@@ -18,5 +18,9 @@
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": ["sidePanel", "scripting", "storage", "activeTab"]
+  "permissions": ["sidePanel", "scripting", "storage", "activeTab", "tabs"],
+  "host_permissions": ["<all_urls>"],
+   "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https: http: https://tessdata.projectnaptha.com"
+  }
 }
