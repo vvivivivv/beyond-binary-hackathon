@@ -1,22 +1,55 @@
 {
   "manifest_version": 3,
   "name": "Universal Assist",
-  "version": "1.0",
-  "action": {
-    "default_title": "Open Side Panel"
-  },
-  "side_panel": {
-    "default_path": "sidepanel.html" 
-  },
+  "version": "1.0.0",
+  "description": "AI-powered accessibility extension with voice, gesture, and OCR support for users with disabilities",
+  "author": "Your Team Name",
+
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
+
   "content_scripts": [
     {
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+
+  "action": {
+    "default_title": "Open Accessibility Assistant"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "models/*",
+        "sidepanel.html",
+        "sidepanel.js",
+        "sidepanel.css"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": ["sidePanel", "scripting", "storage", "activeTab"]
+  "permissions": ["sidePanel", "scripting", "storage", "activeTab", "tabs", "audio", "tts"],
+  "host_permissions": ["<all_urls>"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https: http: https://tessdata.projectnaptha.com"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Open Accessibility Assistant"
+    }
+  }
 }
