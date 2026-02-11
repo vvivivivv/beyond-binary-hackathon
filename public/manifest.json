@@ -38,9 +38,18 @@
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": ["sidePanel", "scripting", "storage", "activeTab", "tabs"],
+  "permissions": ["sidePanel", "scripting", "storage", "activeTab", "tabs", "audio", "tts"],
   "host_permissions": ["<all_urls>"],
-   "content_security_policy": {
+  "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https: http: https://tessdata.projectnaptha.com"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Open Accessibility Assistant"
+    }
   }
 }

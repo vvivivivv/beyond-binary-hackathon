@@ -29,7 +29,8 @@ export default defineConfig({
         },
       }
     },
+    sourmap: false,
     outDir: "dist",
-    emptyOutDir: true
+    emptyOutDir: true,
   }
 });
