@@ -54,7 +54,32 @@ export const scanPage = async () => {
         } catch {
           aiDescription = "AI description unavailable.";
         }
-      }
+        const isLargeEnough = img.width > 50 && img.height > 50;
+        return {
+      id: `img-${index}`,
+      src: img.src,
+      alt: img.alt || aiDescription || "⚠️ Missing Alt Text",
+      isAccessible: hasAlt,
+      aiDescription,
+      isOCRCandidate: isLargeEnough && img.src.startsWith('http'),
+      dimensions: { width: img.width, height: img.height }
+      }};
+
+    const pdfs = Array.from(document.querySelectorAll('a[href$=".pdf"], a[href*="pdf"]'))
+    .map((pdf, index) => ({
+      id: `pdf-${index}`,
+      text: pdf.innerText.trim() || "Unnamed PDF Document",
+      href: pdf.href
+    }));
+
+    const links = Array.from(document.querySelectorAll("a"))
+    .filter(a => !a.href.toLowerCase().endsWith('.pdf'))
+    .map(a => ({
+      text: a.innerText.trim(),
+      href: a.href
+    }))
+    .filter(l => l.text.length > 0 && l.href.startsWith('http'))
+    .slice(0, 15); // Increased limit slightly
 
       return {
         src: img.src,
@@ -70,6 +95,9 @@ export const scanPage = async () => {
     headings,
     mainText,
     images,
-    url: window.location.href
+    pdfs,
+    links,
+    url: window.location.href,
+    timestamp: Date.now()
   };
 };

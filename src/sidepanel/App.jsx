@@ -5,6 +5,9 @@ import { VOICE_COMMANDS } from '../utils/constants';
 import { summarizeText, askQuestion } from '../lib/huggingface';
 import { getLocalDescription } from './visionEngine';
 import UserProfile from './components/profile/UserProfile';
+import OCRResults from './components/display/OCRResults';
+import { Scan, FileText, Layout, Image as ImageIcon } from 'lucide-react';
+
 
 function App() {
   const [userProfile, setUserProfile] = useState(null);
@@ -154,6 +157,50 @@ function App() {
     }
 
     setTargetTabId(tab.id);
+
+    const isPdf = tab.url.toLowerCase().endsWith('.pdf') || tab.url.includes('pdf');
+
+    if (isPdf) {
+      console.log("PDF detected via URL. Processing directly...");
+      setPageData({
+        title: "PDF Document",
+        headings: [],
+        links: [],
+        images: [],
+        pdfs: [{
+                id: tab.url,
+                text: 'Current Document',
+                href: tab.url
+              }]
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (url.endsWith('.pdf')) {
+      setPageData({
+        title: "PDF Document",
+        headings: [], links: [], images: [],
+        pdfs: [{ id: url, text: 'Current Document', href: tab.url }]
+      });
+    } else if (url.match(/\.(jpg|jpeg|png|webp)$/)) {
+      setPageData({
+        title: "Image Document",
+        headings: [], links: [], pdfs: [],
+        images: [{
+          id: url,
+          src: tab.url,
+          alt: 'Direct Image',
+          isAccessible: true,
+          isOCRCandidate: true
+        }]
+      });
+    } else {
+      setPageData({
+        title: "Web Document",
+        headings: [], links: [], images: [], pdfs: []
+      });
+    }};
 
     const processImages = async (response) => {
       setPageData(response);
@@ -513,6 +560,18 @@ function App() {
         <div style={{ marginTop: '1.5em' }}>
           <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid var(--accent-main)', paddingBottom: '0.3em', color: 'var(--text-main)' }}>{pageData.title}</h2>
           
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <section>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>
+              <FileText size={18} color="#2563eb"/> Visual & Document OCR
+            </h3>
+            <OCRResults 
+              images={pageData.images.filter(img => img.isOCRCandidate)} 
+              pdfs={pageData.pdfs} 
+            />
+          </section>
+
           <section>
             <h3 style={{ fontSize: '0.9em', color: 'var(--accent-main)' }}>Page Structure</h3>
             <ul style={{ background: '#f4f4f4', padding: '0.8em', border: '1px solid var(--border-main)', color: 'var(--text-main)', fontSize: '0.8em', listStyle: 'none' }}>
@@ -549,9 +608,9 @@ function App() {
             </div>
           </section>
         </div>
+      </div>
       )}
     </div>
   );
-}
 
 export default App;
