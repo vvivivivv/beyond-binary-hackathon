@@ -35,14 +35,14 @@ We use Transient Multimodal Anchors. When a user searches for specific informati
 ## ✨ Key Features
 
 ### 🎙 Voice-Controlled Navigation
-Users can explore pages entirely through natural language. Command the agent to "Read body," "Scroll to bottom," "Summarise", or "Find images".
+- Users can explore pages entirely through natural language. Command the agent to "Read body," "Scroll to bottom," "Summarise", or "Find images".
 
 ### 👁 AI Vision AI & OCR
 - Image Analysis: For images missing alt-text, our agent uses semantic vision models to describe the scene (e.g., "A library with many books on a shelf").
 - Document OCR: Specifically for PDFs, we utilize Tesseract.js to convert flat, inaccessible documents into searchable, readable text.
 
 ### 📝 AI Summarization & Q&A
-Using the Hugging Face Inference API, the agent can summarize complex articles into digestible bullet points or answer specific questions about the page content.
+- Using the Hugging Face Inference API, the agent can summarize complex articles into digestible bullet points or answer specific questions about the page content.
 
 ### ⚙️ Personalized User Profiles
 - Universal Themes: Centralized control for font sizes and contrast levels (Normal, High, Maximum).
@@ -140,6 +140,7 @@ Our architecture is designed to be an extensible foundation for future assistive
 ---
 
 > Universal Assist — *Fostering inclusive communities by interpreting the world, one page at a time.*
+
 
 
 
