@@ -21,7 +21,7 @@ const VoiceInterface = ({ speech, onCommand, pageTitle }) => {
                 flex: 2, padding: '12px', 
                 background: isListening ? '#d93025' : '#1a73e8', 
                 color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer',
-                animation: isListening ? 'pulse 1.5s infinite' : 'none' // Add a pulse effect!
+                animation: isListening ? 'pulse 1.5s infinite' : 'none'
             }}
             >
             {isListening ? "Ears Open (Listening)" : "Turn On Voice Control"}
@@ -31,9 +31,9 @@ const VoiceInterface = ({ speech, onCommand, pageTitle }) => {
         <button 
           onClick={() => speak(pageTitle ? `Current page: ${pageTitle}` : "No page scanned yet.")}
           title="Repeat Title"
-          style={{ flex: 1, padding: '12px', background: '#fff', border: '1px solid #1a73e8', borderRadius: '8px' }}
+          style={{ flex: 1, padding: '12px', background: '#1a73e8', border: '1px solid #1a73e8', borderRadius: '8px' }}
         >
-          <Play size={20} color="#1a73e8" />
+          <Play size={20} color="#ffffff" />
         </button>
 
         {/* Stop speech */}
@@ -43,7 +43,7 @@ const VoiceInterface = ({ speech, onCommand, pageTitle }) => {
           title="Stop Reading"
           style={{ 
             flex: 1, padding: '12px', 
-            background: '#3c4043', color: 'white', border: 'none', borderRadius: '8px',
+            background: '#3c4043', color: '#1a', border: 'none', borderRadius: '8px',
             opacity: isSpeaking ? 1 : 0.5 
           }}
         >
@@ -51,19 +51,19 @@ const VoiceInterface = ({ speech, onCommand, pageTitle }) => {
         </button>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '12px', color: '#1a73e8' }}>
         <button 
            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
            onClick={() => setRate(prev => Math.max(0.5, prev - 0.2))}
         >
-          <Rewind size={18}/>
+          <Rewind size={18} color='#1a73e8'/>
         </button>
         <span style={{ fontSize: '13px', fontWeight: '500' }}>Speed: {rate.toFixed(1)}x</span>
         <button 
            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
            onClick={() => setRate(prev => Math.min(2, prev + 0.2))}
         >
-          <FastForward size={18}/>
+          <FastForward size={18} color='#1a73e8'/>
         </button>
       </div>
     </div>

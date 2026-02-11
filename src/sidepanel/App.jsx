@@ -1,13 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSpeech } from './hooks/useSpeech';
 import VoiceInterface from './components/multimodal/VoiceInterface';
 import { VOICE_COMMANDS } from '../utils/constants';
 import { summarizeText, askQuestion } from '../lib/huggingface';
 import { getLocalDescription } from './visionEngine';
-import React, { useState, useEffect } from 'react';
 import UserProfile from './components/profile/UserProfile';
-import SimplifiedView from './components/display/SimplifiedView';
-import { Menu, X } from 'lucide-react';
 
 function App() {
   const [userProfile, setUserProfile] = useState(null);
@@ -17,9 +14,36 @@ function App() {
   const [summary, setSummary] = useState("");
   const [imgIndex, setImgIndex] = useState(-1);
   const [progress, setProgress] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
+
   
   const speech = useSpeech();  
   const lastReadRef = useRef("");
+
+  useEffect(() => {
+    chrome.storage.sync.get(['userProfile'], (result) => {
+      if (result.userProfile) {
+        setUserProfile(result.userProfile);
+        applyTheme(result.userProfile);
+      }
+    });
+  }, []);
+
+  const applyTheme = (profile) => {
+    const root = document.documentElement;
+    root.style.setProperty('--base-font-size', `${profile.preferences.fontSize}px`);
+    document.body.className = `theme-${profile.preferences.colorScheme} contrast-${profile.preferences.contrast}`;
+    if (profile.preferences.speechRate) {
+      speech.setRate(profile.preferences.speechRate);
+    }
+  };
+
+  const handleProfileChange = (newProfile) => {
+    setUserProfile(newProfile);
+    applyTheme(newProfile);
+    chrome.runtime.sendMessage({ action: 'profileUpdated', profile: newProfile });
+  };
 
   const speakAndTrack = (text) => {
     lastReadRef.current = text;
@@ -141,9 +165,8 @@ function App() {
       } else {
         processImages(response);
       }
-  const [showProfile, setShowProfile] = useState(false);
-  const [currentView, setCurrentView] = useState('simplified');
-  const [isLoading, setIsLoading] = useState(true);
+    });
+  };
 
   // Load initial page data
   useEffect(() => {
@@ -175,32 +198,6 @@ function App() {
     chrome.runtime.onMessage.addListener(messageListener);
     return () => chrome.runtime.onMessage.removeListener(messageListener);
   }, []);
-
-  // Apply theme based on user profile
-  useEffect(() => {
-    if (userProfile) {
-      const root = document.documentElement;
-      
-      // Apply font size
-      root.style.setProperty('--base-font-size', `${userProfile.preferences.fontSize}px`);
-      
-      // Apply color scheme
-      root.setAttribute('data-theme', userProfile.preferences.colorScheme);
-      
-      // Apply contrast
-      root.setAttribute('data-contrast', userProfile.preferences.contrast);
-    }
-  }, [userProfile]);
-
-  const handleProfileChange = (newProfile) => {
-    setUserProfile(newProfile);
-    
-    // Notify background script of profile change
-    chrome.runtime.sendMessage({
-      action: 'profileUpdated',
-      profile: newProfile
-    });
-  };
 
   const handleSearch = async (query) => {
     if (!pageData || !pageData.mainText) return;
@@ -380,15 +377,53 @@ function App() {
     );
   }
 
+  if (showProfile) {
+    return (
+      <div style={{ padding: '1rem' }}>
+        <button
+          onClick={() => setShowProfile(false)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: '#1a73e8',
+            marginBottom: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          ← Back to Assist
+        </button>
+        <UserProfile onProfileChange={handleProfileChange} />
+      </div>
+    );
+  }
+
+  // Main interface
   return (
-    <div style={{ padding: '1rem', fontFamily: 'sans-serif', color: '#333' }}>
+    <div style={{ padding: '1rem', fontFamily: 'sans-serif', color: '#333', backgroundColor: '#ffffff' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
         <h1 style={{ fontSize: '1.2rem', margin: 0, color: '#1a73e8' }}>Universal Assist</h1>
         <button onClick={() => window.open(chrome.runtime.getURL('permissions.html'))} style={{ fontSize: '10px' }}>Setup Mic</button>
       </div>
-      
-      <button onClick={handleScan} disabled={loading} style={{ padding: '12px', width: '100%', cursor: 'pointer', marginBottom: '10px', background: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
-        {loading ? "Scanning..." : "Interpret Page"}
+
+      {/* PROFILE BUTTON */}
+      <button
+        onClick={() => setShowProfile(true)}
+        style={{ padding: '10px', width: '100%', marginBottom: '10px', background: '#1a73e8', color: '#ffffff', border: '1px solid #ccc', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+      >
+        ⚙️ User Profile
+      </button>
+
+      {/* INTERPRET PAGE BUTTON */}
+      <button
+        onClick={handleScan}
+        disabled={loading}
+        style={{ padding: '12px', width: '100%', cursor: 'pointer', marginBottom: '10px', background: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
+      >
+        {loading ? (progress || "Scanning...") : "Interpret Page"}
       </button>
 
       <VoiceInterface speech={speech} onCommand={handleVoiceCommand} pageTitle={pageData?.title} />
@@ -415,13 +450,14 @@ function App() {
         </div>
       )}
 
+      {/* PAGE DATA */}
       {pageData && (
         <div style={{ marginTop: '20px' }}>
           <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid #1a73e8', paddingBottom: '5px' }}>{pageData.title}</h2>
           
           <section>
             <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Page Structure</h3>
-            <ul style={{ background: '#f4f4f4', padding: '10px', borderRadius: '8px', fontSize: '13px', listStyle: 'none' }}>
+            <ul style={{ background: '#f4f4f4', padding: '10px', borderRadius: '8px', fontSize: '12px', listStyle: 'none' }}>
               {pageData.headings.map((h, i) => (
                 <li key={i} style={{ marginBottom: '5px' }}>
                   <strong>[{h.level}]</strong> {h.text}
@@ -439,110 +475,23 @@ function App() {
 
           <section>
             <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Images Analysis ({pageData.images.length})</h3>
+            <div style={{ fontSize: '13px'}}>
             {pageData.images.map((img, i) => (
               <div key={i} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
                 <div style={{ color: img.isAccessible ? 'green' : '#d93025', fontWeight: 'bold' }}>
                   {img.alt}
                 </div>
                 {img.aiInterpretedText && (
-                  <div style={{ fontSize: '0.9em', color: '#555', marginTop: '4px', fontStyle: 'italic' }}>
+                  <div style={{ fontSize: '13px', color: '#555', marginTop: '4px', fontStyle: 'italic' }}>
                     🤖 Detected: {img.aiInterpretedText}
                   </div>
                 )}
               </div>
             ))}
-          </section>
-
-    <div className="app-container" data-touch-mode={userProfile?.inputModes.touch}>
-      {/* Header */}
-      <header className="app-header">
-        <h1>Accessibility Assistant</h1>
-        <button
-          className="profile-toggle"
-          onClick={() => setShowProfile(!showProfile)}
-          aria-label="Toggle profile settings"
-          aria-expanded={showProfile}
-        >
-          {showProfile ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </header>
-
-      {/* Profile Panel (Collapsible) */}
-      {showProfile && (
-        <div className="profile-panel">
-          <UserProfile
-            onProfileChange={setUserProfile}
-            onClose={() => setShowProfile(false)}
-          />
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <main className="app-main">
-        {/* View Selector */}
-        <nav className="view-selector" role="tablist">
-          <button
-            role="tab"
-            aria-selected={currentView === 'simplified'}
-            onClick={() => setCurrentView('simplified')}
-            className={currentView === 'simplified' ? 'active' : ''}
-          >
-            Simplified View
-          </button>
-        </nav>
-
-        {/* Content Display */}
-        <div className="content-area">
-          {currentView === 'simplified' && pageData && (
-            <SimplifiedView 
-              data={pageData} 
-              profile={userProfile}
-            />
-          )}
-          
-          {!pageData && currentView === 'simplified' && (
-            <div className="no-data">
-              <h2>Welcome to Accessibility Assistant</h2>
-              <p>Click the menu icon above to configure your accessibility profile.</p>
             </div>
-          )}
+          </section>
         </div>
-      </main>
-
-      {/*{userProfile?.inputModes.voice && (
-        <VoiceInterface profile={userProfile} />
       )}
-
-      {userProfile?.inputModes.camera && (
-        <GestureCamera profile={userProfile} />
-      )}*/}
-
-
-      {/* Status Bar */}
-      <footer className="app-footer">
-        <div className="status-indicators">
-          {userProfile?.inputModes.voice && (
-            <span className="indicator voice-active" title="Voice input ready">
-              🎤
-            </span>
-          )}
-          {userProfile?.inputModes.camera && (
-            <span className="indicator camera-active" title="Camera ready">
-              📷
-            </span>
-          )}
-          {userProfile?.outputModes.speech && (
-            <span className="indicator speech-active" title="Speech output active">
-              🔊
-            </span>
-          )}
-        </div>
-        <span className="profile-name">
-          {userProfile?.disabilityType !== 'none' && userProfile?.disabilityType
-            ? userProfile.disabilityType.replace('-', ' ').toUpperCase()
-            : 'Default Profile'}
-        </span>
-      </footer>
     </div>
   );
 }
