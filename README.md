@@ -113,6 +113,19 @@ The extension is built with React.js and Chrome Extension Manifest V3.
 
 ---
 
+
+## ⚖️ Judging Criteria Alignment
+
+| Criteria | How We Meet It |
+| :--- | :--- |
+| Impact & Relevance (25%) | Addresses the 95.9% failure rate of modern homepages by creating a site-agnostic assistive agent that works even on "broken" websites. |
+| Multimodal Innovation (30%) | Cohesive integration of Vision (OCR/Descriptions), Audio (TTS), and Voice (Commands) to ensure accessibility regardless of user ability. |
+| Technical Execution (17%) | Manifest V3 compliant, modular React architecture with non-blocking async loops for background AI inference and local vision processing. |
+| Usability & Accessibility (15%) | Personalization-first design. Adaptive contrast/font themes and transient highlights ensure a low-friction, high-autonomy experience. |
+| Completeness (13%) | Fully functional PDF OCR pipeline, Voice Interface, and AI Summarization ready for immediate, practical deployment. |
+
+---
+
 ## 🔮 Future Roadmap: Expanding Multimodal Nuance
 Our architecture is designed to be an extensible foundation for future assistive technologies:
 
@@ -128,6 +141,7 @@ Our architecture is designed to be an extensible foundation for future assistive
 ---
 
 > Universal Assist — *Fostering inclusive communities by interpreting the world, one page at a time.*
+
 
 
 
