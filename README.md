@@ -36,6 +36,8 @@ We use Transient Multimodal Anchors. When a user searches for specific informati
 
 ### 🎙 Voice-Controlled Navigation
 - Users can explore pages entirely through natural language. Command the agent to "Read body," "Scroll to bottom," "Summarise", or "Find images".
+- Voice navigation commands are defined in `src/utils/constants.js`.
+- Detailed execution logs can be viewed using the browser’s `Inspect Element` (Developer Tools → Console).
 
 ### 👁 AI Vision AI & OCR
 - Image Analysis: For images missing alt-text, our agent uses semantic vision models to describe the scene (e.g., "A library with many books on a shelf").
@@ -140,6 +142,7 @@ Our architecture is designed to be an extensible foundation for future assistive
 ---
 
 > Universal Assist — *Fostering inclusive communities by interpreting the world, one page at a time.*
+
 
 
 
