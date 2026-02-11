@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Volume2, Eye, Hand, Brain, Save, Settings } from 'lucide-react';
+import { User, Volume2, Eye, Hand, Brain, Save, Info, CheckCircle } from 'lucide-react';
 
 const UserProfile = ({ onProfileChange }) => {
   const [profile, setProfile] = useState({
@@ -7,7 +7,6 @@ const UserProfile = ({ onProfileChange }) => {
     inputModes: {
       voice: false,
       text: true,
-      camera: false,
       touch: false
     },
     outputModes: {
@@ -19,283 +18,220 @@ const UserProfile = ({ onProfileChange }) => {
       contrast: 'normal',
       colorScheme: 'light',
       speechRate: 1.0,
-      speechVolume: 1.0,
       autoAdjust: false
     }
   });
 
-  const [showSettings, setShowSettings] = useState(false);
-  const [saveStatus, setSaveStatus] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
 
-  // Load profile from Chrome storage on mount
   useEffect(() => {
     chrome.storage.sync.get(['userProfile'], (result) => {
       if (result.userProfile) {
         setProfile(result.userProfile);
-        onProfileChange?.(result.userProfile);
       }
     });
   }, []);
 
-  // Save profile to Chrome storage
+  const updateAndNotify = (updatedProfile) => {
+    setProfile(updatedProfile);
+    onProfileChange(updatedProfile);
+  };
+
   const saveProfile = () => {
     chrome.storage.sync.set({ userProfile: profile }, () => {
-      setSaveStatus('Profile saved successfully!');
+      setShowPopup(true);
       onProfileChange?.(profile);
-      setTimeout(() => setSaveStatus(''), 3000);
+      setTimeout(() => setShowPopup(false), 3000);
     });
   };
 
-  // Update profile when disability type changes
   const handleDisabilityTypeChange = (type) => {
     const updatedProfile = { ...profile, disabilityType: type };
+    updatedProfile.preferences.contrast = 'normal';
+    updatedProfile.preferences.speechRate = 1.0;
 
-    // Auto-configure based on disability type
     switch (type) {
       case 'blind':
-        updatedProfile.inputModes = { voice: true, text: false, camera: false, touch: true };
+        updatedProfile.inputModes = { voice: true, text: false, touch: true };
         updatedProfile.outputModes = { speech: true, visual: false };
         updatedProfile.preferences.speechRate = 1.2;
         break;
       case 'low-vision':
-        updatedProfile.inputModes = { voice: true, text: true, camera: false, touch: true };
+        updatedProfile.inputModes = { voice: true, text: true, touch: true };
         updatedProfile.outputModes = { speech: true, visual: true };
         updatedProfile.preferences.fontSize = 20;
         updatedProfile.preferences.contrast = 'high';
         break;
       case 'deaf':
-        updatedProfile.inputModes = { voice: false, text: true, camera: true, touch: true };
+        updatedProfile.inputModes = { voice: false, text: true, touch: true };
         updatedProfile.outputModes = { speech: false, visual: true };
         break;
       case 'motor-impaired':
-        updatedProfile.inputModes = { voice: true, text: false, camera: true, touch: false };
+        updatedProfile.inputModes = { voice: true, text: false, touch: false };
         updatedProfile.outputModes = { speech: true, visual: true };
         break;
       case 'cognitive':
-        updatedProfile.inputModes = { voice: true, text: true, camera: false, touch: true };
+        updatedProfile.inputModes = { voice: true, text: true, touch: true };
         updatedProfile.outputModes = { speech: true, visual: true };
         updatedProfile.preferences.speechRate = 0.8;
         updatedProfile.preferences.fontSize = 18;
         break;
       case 'temporary':
-        updatedProfile.inputModes = { voice: true, text: true, camera: false, touch: true };
+        updatedProfile.inputModes = { voice: true, text: true, touch: true };
         updatedProfile.outputModes = { speech: true, visual: true };
         break;
       default:
-        updatedProfile.inputModes = { voice: false, text: true, camera: false, touch: false };
+        updatedProfile.inputModes = { voice: false, text: true, touch: false };
         updatedProfile.outputModes = { speech: false, visual: true };
+        updatedProfile.preferences.contrast = 'normal';
+        updatedProfile.preferences.fontSize = 16;
     }
-
-    setProfile(updatedProfile);
+    updateAndNotify(updatedProfile);
   };
 
   const toggleInputMode = (mode) => {
-    setProfile({
-      ...profile,
-      inputModes: {
-        ...profile.inputModes,
-        [mode]: !profile.inputModes[mode]
-      }
-    });
+    const updated = { ...profile, inputModes: { ...profile.inputModes, [mode]: !profile.inputModes[mode] } };
+    updateAndNotify(updated);
   };
 
   const toggleOutputMode = (mode) => {
-    setProfile({
-      ...profile,
-      outputModes: {
-        ...profile.outputModes,
-        [mode]: !profile.outputModes[mode]
-      }
-    });
+    const updated = { ...profile, outputModes: { ...profile.outputModes, [mode]: !profile.outputModes[mode] } };
+    updateAndNotify(updated);
   };
 
-  const updatePreference = (key, value) => {
-    setProfile({
-      ...profile,
-      preferences: {
-        ...profile.preferences,
-        [key]: value
-      }
-    });
+  const updatePref = (key, val) => {
+    const updated = { ...profile, preferences: { ...profile.preferences, [key]: val } };
+    updateAndNotify(updated);
   };
 
   return (
-    <div className="user-profile">
-      <div className="profile-header">
-        <h2>Accessibility Profile</h2>
-          <button className="save-button" onClick={saveProfile}>
-          <Save size={20} />
-          Save Profile
+    // FIX: Added height and overflow to allow scrolling when font is large
+    <div style={{ 
+      height: '80vh', 
+      overflowY: 'auto', 
+      paddingRight: '10px',
+      color: 'var(--text-main)' 
+    }}>
+      {/* POPUP OVERLAY */}
+      {showPopup && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex',
+          justifyContent: 'center', alignItems: 'center'
+        }}>
+          <div style={{
+            background: 'white', padding: '2em', borderRadius: '12px',
+            textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            minWidth: '200px', border: '2px solid var(--accent-main)'
+          }}>
+            <CheckCircle size={48} color="green" style={{ marginBottom: '0.5em' }} />
+            <h2 style={{ margin: '0 0 0.5em 0', color: '#333', fontSize: '1.5em' }}>Saved!</h2>
+            <p style={{ color: '#666', marginBottom: '1em', fontSize: '1em' }}>Settings updated successfully.</p>
+            <button 
+              onClick={() => setShowPopup(false)}
+              style={{
+                background: 'var(--accent-main)', color: 'white', border: 'none',
+                padding: '0.5em 1.5em', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em'
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5em' }}>
+        <h2 style={{ margin: 0, fontSize: '1.5em' }}>Accessibility Profile</h2>
+        <button 
+          onClick={saveProfile} 
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5em', background: 'var(--accent-main)', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5em 1em', cursor: 'pointer', fontSize: '0.9em' }}
+        >
+          <Save size={18} /> Save
         </button>
       </div>
 
-      {/* Disability Type Selection */}
-      <div className="profile-section">
-        <h3>Select Your Profile</h3>
-        <div className="profile-options">
+      {/* Select Profile Grid */}
+      <div style={{ marginBottom: '1.5em' }}>
+        <h3 style={{ fontSize: '1.1em', marginBottom: '0.8em', color: 'var(--accent-main)' }}>Select Your Profile</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8em' }}>
           {[
-            { value: 'none', label: 'None / Default', icon: User },
+            { value: 'none', label: 'Default', icon: User },
             { value: 'blind', label: 'Blind', icon: Eye },
             { value: 'low-vision', label: 'Low Vision', icon: Eye },
-            { value: 'deaf', label: 'Deaf / Hard of Hearing', icon: Volume2 },
-            { value: 'motor-impaired', label: 'Motor Impaired', icon: Hand },
-            { value: 'cognitive', label: 'Cognitive / Learning', icon: Brain },
-            { value: 'temporary', label: 'Temporary Difficulty', icon: Hand }
+            { value: 'deaf', label: 'Deaf', icon: Volume2 },
+            { value: 'motor-impaired', label: 'Motor', icon: Hand },
+            { value: 'cognitive', label: 'Cognitive', icon: Brain },
+            { value: 'temporary', label: 'Temporary', icon: Info }
           ].map(({ value, label, icon: Icon }) => (
             <button
               key={value}
-              className={`profile-option ${profile.disabilityType === value ? 'active' : ''}`}
               onClick={() => handleDisabilityTypeChange(value)}
-              aria-pressed={profile.disabilityType === value}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.6em', padding: '0.8em',
+                borderRadius: '8px', border: profile.disabilityType === value ? '2px solid var(--accent-main)' : '1px solid var(--border-main)',
+                background: profile.disabilityType === value ? 'rgba(26, 115, 232, 0.1)' : 'var(--bg-main)',
+                color: 'var(--text-main)', cursor: 'pointer', textAlign: 'left', fontSize: '0.9em'
+              }}
             >
-              <Icon size={20} />
-              <span>{label}</span>
+              <Icon size={18} />
+              <span style={{ fontWeight: profile.disabilityType === value ? 'bold' : 'normal' }}>{label}</span>
             </button>
           ))}
         </div>
       </div>
-      
-      {/* Input Modes */}
-      <div className="profile-section">
-        <h3>Input Methods</h3>
-        <div className="mode-toggles">
-          {[
-            { key: 'voice', label: 'Voice Commands', icon: Volume2 },
-            { key: 'text', label: 'Text Input', icon: Settings },
-            { key: 'camera', label: 'Camera / Gestures', icon: Eye },
-            { key: 'touch', label: 'Large Touch Targets', icon: Hand }
-          ].map(({ key, label, icon: Icon }) => (
-            <label key={key} className="mode-toggle">
-              <input
-                type="checkbox"
-                checked={profile.inputModes[key]}
-                onChange={() => toggleInputMode(key)}
-              />
-              <Icon size={18} />
-              <span>{label}</span>
+
+      {/* Input / Output Checklist */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1em', marginBottom: '1.5em' }}>
+        <div>
+          <h3 style={{ fontSize: '1em', color: 'var(--accent-main)', marginBottom: '0.5em' }}>Input Methods</h3>
+          {['voice', 'text', 'touch'].map(mode => (
+            <label key={mode} style={{ display: 'flex', alignItems: 'center', gap: '0.5em', marginBottom: '0.5em', fontSize: '0.9em' }}>
+              <input type="checkbox" checked={profile.inputModes[mode]} onChange={() => toggleInputMode(mode)} />
+              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+            </label>
+          ))}
+        </div>
+        <div>
+          <h3 style={{ fontSize: '1em', color: 'var(--accent-main)', marginBottom: '0.5em' }}>Output Methods</h3>
+          {['speech', 'visual'].map(mode => (
+            <label key={mode} style={{ display: 'flex', alignItems: 'center', gap: '0.5em', marginBottom: '0.5em', fontSize: '0.9em' }}>
+              <input type="checkbox" checked={profile.outputModes[mode]} onChange={() => toggleOutputMode(mode)} />
+              {mode === 'speech' ? 'Speech' : 'Visual'}
             </label>
           ))}
         </div>
       </div>
 
-      {/* Output Modes */}
-      <div className="profile-section">
-        <h3>Output Methods</h3>
-        <div className="mode-toggles">
-          {[
-            { key: 'speech', label: 'Text-to-Speech', icon: Volume2 },
-            { key: 'visual', label: 'Visual Display', icon: Eye }
-          ].map(({ key, label, icon: Icon }) => (
-            <label key={key} className="mode-toggle">
-              <input
-                type="checkbox"
-                checked={profile.outputModes[key]}
-                onChange={() => toggleOutputMode(key)}
-              />
-              <Icon size={18} />
-              <span>{label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Preferences */}
-      <div className="profile-section">
-        <h3>Preferences</h3>
+      {/* Sliders */}
+      <div style={{ paddingBottom: '2em' }}>
+        <h3 style={{ fontSize: '1.1em', color: 'var(--accent-main)', marginBottom: '0.8em' }}>Preferences</h3>
         
-        {/* Font Size */}
-        <div className="preference-control">
-          <label htmlFor="fontSize">Font Size: {profile.preferences.fontSize}px</label>
-          <input
-            id="fontSize"
-            type="range"
-            min="12"
-            max="32"
-            value={profile.preferences.fontSize}
-            onChange={(e) => updatePreference('fontSize', parseInt(e.target.value))}
-          />
+        <div style={{ marginBottom: '1em' }}>
+          <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '0.3em' }}>Font Size: {profile.preferences.fontSize}px</label>
+          <input type="range" min="12" max="32" value={profile.preferences.fontSize} onChange={(e) => updatePref('fontSize', parseInt(e.target.value))} style={{ width: '100%' }} />
         </div>
 
-        {/* Contrast */}
-        <div className="preference-control">
-          <label htmlFor="contrast">Contrast</label>
-          <select
-            id="contrast"
-            value={profile.preferences.contrast}
-            onChange={(e) => updatePreference('contrast', e.target.value)}
-          >
+        <div style={{ marginBottom: '1em' }}>
+          <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '0.3em' }}>Contrast Level</label>
+          <select value={profile.preferences.contrast} onChange={(e) => updatePref('contrast', e.target.value)} style={{ width: '100%', padding: '0.5em', borderRadius: '4px', border: '1px solid var(--border-main)', fontSize: '0.9em' }}>
             <option value="normal">Normal</option>
             <option value="high">High</option>
             <option value="maximum">Maximum</option>
           </select>
         </div>
 
-        {/* Color Scheme */}
-        <div className="preference-control">
-          <label htmlFor="colorScheme">Color Scheme</label>
-          <select
-            id="colorScheme"
-            value={profile.preferences.colorScheme}
-            onChange={(e) => updatePreference('colorScheme', e.target.value)}
-          >
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-            <option value="high-contrast">High Contrast</option>
-          </select>
+        <div style={{ marginBottom: '1em' }}>
+          <label style={{ display: 'block', fontSize: '0.9em', marginBottom: '0.3em' }}>Speech Rate: {profile.preferences.speechRate}x</label>
+          <input type="range" min="0.5" max="2.0" step="0.1" value={profile.preferences.speechRate} onChange={(e) => updatePref('speechRate', parseFloat(e.target.value))} style={{ width: '100%' }} />
         </div>
-
-        {/* Speech Rate */}
-        {profile.outputModes.speech && (
-          <div className="preference-control">
-            <label htmlFor="speechRate">Speech Rate: {profile.preferences.speechRate}x</label>
-            <input
-              id="speechRate"
-              type="range"
-              min="0.5"
-              max="2.0"
-              step="0.1"
-              value={profile.preferences.speechRate}
-              onChange={(e) => updatePreference('speechRate', parseFloat(e.target.value))}
-            />
-          </div>
-        )}
-
-        {/* Speech Volume */}
-        {profile.outputModes.speech && (
-          <div className="preference-control">
-            <label htmlFor="speechVolume">Speech Volume: {Math.round(profile.preferences.speechVolume * 100)}%</label>
-            <input
-              id="speechVolume"
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={profile.preferences.speechVolume}
-              onChange={(e) => updatePreference('speechVolume', parseFloat(e.target.value))}
-            />
-          </div>
-        )}
-
-        {/* Auto Adjust */}
-        <div className="preference-control">
-          <label>
-            <input
-              type="checkbox"
-              checked={profile.preferences.autoAdjust}
-              onChange={(e) => updatePreference('autoAdjust', e.target.checked)}
-            />
-            Auto-adjust based on environment
-          </label>
-        </div>
+        
+        <button 
+          onClick={saveProfile} 
+          style={{ width: '100%', padding: '1em', background: 'var(--accent-main)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1em', cursor: 'pointer', marginTop: '1em' }}
+        >
+          Save All Changes
+        </button>
       </div>
-
-      {/* Save Button */}
-      <button className="save-button" onClick={saveProfile}>
-        <Save size={20} />
-        Save Profile
-      </button>
-
-      {saveStatus && <div className="save-status">{saveStatus}</div>}
     </div>
   );
 };

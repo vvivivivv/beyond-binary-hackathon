@@ -29,13 +29,68 @@ function App() {
       }
     });
   }, []);
-
+  
   const applyTheme = (profile) => {
+    if (!profile) return;
+    const { preferences } = profile;
     const root = document.documentElement;
-    root.style.setProperty('--base-font-size', `${profile.preferences.fontSize}px`);
-    document.body.className = `theme-${profile.preferences.colorScheme} contrast-${profile.preferences.contrast}`;
-    if (profile.preferences.speechRate) {
-      speech.setRate(profile.preferences.speechRate);
+
+    root.style.fontSize = `${preferences.fontSize}px`; 
+    
+    root.style.setProperty('--base-font-size', `${preferences.fontSize}px`);
+    
+    const contrastStyles = {
+      normal: { bg: '#ffffff', text: '#333333', accent: '#1a73e8', border: '#dddddd' },
+      high: { bg: '#ffffff', text: '#000000', accent: '#0000ee', border: '#000000' },
+      maximum: { bg: '#ffffff', text: '#000000', accent: '#d93025', border: '#000000' }
+    };
+
+    const style = contrastStyles[preferences.contrast] || contrastStyles.normal;
+    root.style.setProperty('--bg-main', style.bg);
+    root.style.setProperty('--text-main', style.text);
+    root.style.setProperty('--accent-main', style.accent);
+    root.style.setProperty('--border-main', style.border);
+
+    if (preferences.speechRate) speech.setRate(preferences.speechRate);
+
+    applyToWebpage(profile);
+  };
+
+  const applyToWebpage = async (profile) => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (!tab?.id || tab.url?.startsWith('chrome://')) return;
+
+      const { fontSize, contrast } = profile.preferences;
+
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (fs, cont) => {
+          const id = 'universal-assist-styles';
+          let styleTag = document.getElementById(id);
+          if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = id;
+            document.head.appendChild(styleTag);
+          }
+
+          let css = '';
+          if (fs > 16) {
+            css += `html { font-size: ${100 + (fs - 16) * 3}% !important; }`;
+          }
+
+          if (cont === 'high') {
+            css += `html { filter: contrast(120%) !important; }`;
+          } else if (cont === 'maximum') {
+            css += `html { filter: contrast(180%) brightness(105%) !important; }`;
+          }
+
+          styleTag.innerHTML = css;
+        },
+        args: [fontSize, contrast]
+      }).catch(err => console.warn("Injection blocked on this page."));
+    } catch (e) {
+      console.error("Messaging error:", e);
     }
   };
 
@@ -377,22 +432,25 @@ function App() {
     );
   }
 
+  const mainContainerStyle = {
+    padding: '1rem',
+    fontFamily: 'sans-serif',
+    minHeight: '100vh',
+    backgroundColor: 'var(--bg-main)',
+    color: 'var(--text-main)',
+    transition: 'all 0.2s ease',
+    height: '100vh',
+    overflowY: 'auto',
+    boxSizing: 'border-box'
+  };
+
+
   if (showProfile) {
     return (
-      <div style={{ padding: '1rem' }}>
+      <div style={mainContainerStyle}>
         <button
           onClick={() => setShowProfile(false)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            color: '#1a73e8',
-            marginBottom: '1rem',
-            fontWeight: 'bold'
-          }}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--accent-main)', marginBottom: '1rem', fontWeight: 'bold', fontSize: '1em' }}
         >
           ← Back to Assist
         </button>
@@ -403,16 +461,16 @@ function App() {
 
   // Main interface
   return (
-    <div style={{ padding: '1rem', fontFamily: 'sans-serif', color: '#333', backgroundColor: '#ffffff' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <h1 style={{ fontSize: '1.2rem', margin: 0, color: '#1a73e8' }}>Universal Assist</h1>
-        <button onClick={() => window.open(chrome.runtime.getURL('permissions.html'))} style={{ fontSize: '10px' }}>Setup Mic</button>
+    <div style={mainContainerStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h1 style={{ fontSize: '1.2em', margin: 0, color: 'var(--accent-main)' }}>Universal Assist</h1>
+        <button onClick={() => window.open(chrome.runtime.getURL('permissions.html'))} style={{ fontSize: '0.7em' }}>Setup Mic</button>
       </div>
 
       {/* PROFILE BUTTON */}
       <button
         onClick={() => setShowProfile(true)}
-        style={{ padding: '10px', width: '100%', marginBottom: '10px', background: '#1a73e8', color: '#ffffff', border: '1px solid #ccc', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+        style={{ padding: '0.8em', width: '100%', marginBottom: '10px', background: 'var(--accent-main)', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9em' }}
       >
         ⚙️ User Profile
       </button>
@@ -421,7 +479,7 @@ function App() {
       <button
         onClick={handleScan}
         disabled={loading}
-        style={{ padding: '12px', width: '100%', cursor: 'pointer', marginBottom: '10px', background: '#1a73e8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
+        style={{ padding: '1em', width: '100%', cursor: 'pointer', marginBottom: '10px', background: 'var(--accent-main)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1em', opacity: loading ? 0.7 : 1 }}
       >
         {loading ? (progress || "Scanning...") : "Interpret Page"}
       </button>
@@ -431,19 +489,19 @@ function App() {
       {/* AI SUMMARY BOX */}
       {summary && (
         <div style={{ 
-          marginTop: '15px', padding: '12px', 
-          background: '#fef7e0', borderLeft: '5px solid #f9ab00', 
-          borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          marginTop: '1em', padding: '1em', 
+          background: '#fef7e0', borderLeft: '0.4em solid var(--accent-main)', 
+          borderRadius: '8px', border: '1px solid var(--border-main)',boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
         }}>
-          <h4 style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#b06000', textTransform: 'uppercase' }}>
+          <h4 style={{ margin: '0 0 0.5em 0', fontSize: '0.7em', color: 'var(--text-main)', textTransform: 'uppercase' }}>
             Agent Interpretation
           </h4>
-          <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.4', color: '#3c4043' }}>
+          <p style={{ margin: 0, fontSize: '0.9em', lineHeight: '1.4', color: '#3c4043' }}>
             {summary}
           </p>
           <button 
             onClick={() => speakAndTrack(summary)} 
-            style={{ marginTop: '8px', fontSize: '10px', background: 'white', border: '1px solid #f9ab00', borderRadius: '4px', cursor: 'pointer', padding: '2px 8px' }}
+            style={{ marginTop: '0.8em', fontSize: '0.7em', background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--accent-main)', borderRadius: '4px', cursor: 'pointer', padding: '2px 8px' }}
           >
             🔊 Repeat
           </button>
@@ -452,37 +510,37 @@ function App() {
 
       {/* PAGE DATA */}
       {pageData && (
-        <div style={{ marginTop: '20px' }}>
-          <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid #1a73e8', paddingBottom: '5px' }}>{pageData.title}</h2>
+        <div style={{ marginTop: '1.5em' }}>
+          <h2 style={{ fontSize: '1.1rem', borderBottom: '2px solid var(--accent-main)', paddingBottom: '0.3em', color: 'var(--text-main)' }}>{pageData.title}</h2>
           
           <section>
-            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Page Structure</h3>
-            <ul style={{ background: '#f4f4f4', padding: '10px', borderRadius: '8px', fontSize: '12px', listStyle: 'none' }}>
+            <h3 style={{ fontSize: '0.9em', color: 'var(--accent-main)' }}>Page Structure</h3>
+            <ul style={{ background: '#f4f4f4', padding: '0.8em', border: '1px solid var(--border-main)', color: 'var(--text-main)', fontSize: '0.8em', listStyle: 'none' }}>
               {pageData.headings.map((h, i) => (
-                <li key={i} style={{ marginBottom: '5px' }}>
+                <li key={i} style={{ marginBottom: '0.4em' }}>
                   <strong>[{h.level}]</strong> {h.text}
                 </li>
               ))}
             </ul>
           </section>
 
-          <section style={{ marginTop: '15px' }}>
-            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Main Content</h3>
-            <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', fontSize: '12px', border: '1px solid #eee', maxHeight: '150px', overflowY: 'auto' }}>
-              {pageData.mainText.map((txt, i) => <p key={i} style={{ marginBottom: '8px' }}>{txt}</p>)}
+          <section style={{ marginTop: '1em' }}>
+            <h3 style={{ fontSize: '0.9em', color: 'var(--accent-main)' }}>Main Content</h3>
+            <div style={{ background: 'var(--bg-main)', padding: '0.8em', borderRadius: '8px', fontSize: '0.8em', border: '1px solid var(--border-main)', maxHeight: '150px', overflowY: 'auto', color: 'var(--text-main)' }}>
+              {pageData.mainText.map((txt, i) => <p key={i} style={{ marginBottom: '0.6em' }}>{txt}</p>)}
             </div>
           </section>
 
-          <section>
-            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Images Analysis ({pageData.images.length})</h3>
-            <div style={{ fontSize: '13px'}}>
+          <section style={{ marginTop: '1em' }}>
+            <h3 style={{ fontSize: '0.9em', color: 'var(--accent-main)' }}>Images Analysis ({pageData.images.length})</h3>
+            <div style={{ fontSize: '0.8em', color: 'var(--text-main)'}}>
             {pageData.images.map((img, i) => (
-              <div key={i} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
-                <div style={{ color: img.isAccessible ? 'green' : '#d93025', fontWeight: 'bold' }}>
+              <div key={i} style={{ borderBottom: '1px solid var(--border-main)', padding: '0.8em 0' }}>
+                <div style={{ color: img.isAccessible ? 'green' : 'var(--text-main)', fontWeight: 'bold' }}>
                   {img.alt}
                 </div>
                 {img.aiInterpretedText && (
-                  <div style={{ fontSize: '13px', color: '#555', marginTop: '4px', fontStyle: 'italic' }}>
+                  <div style={{ fontSize: '0.9em', color: '#555', marginTop: '0.3em', fontStyle: 'italic' }}>
                     🤖 Detected: {img.aiInterpretedText}
                   </div>
                 )}
