@@ -352,7 +352,7 @@ function App() {
       {summary && (
         <div style={{ marginTop: '1em', padding: '1em', background: '#fef7e0', borderLeft: '0.4em solid var(--accent-main)', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
           <p style={{ margin: 0, fontSize: '0.9em', lineHeight: '1.4' }}>{summary}</p>
-          <button onClick={() => speakAndTrack(summary)} style={{ marginTop: '0.8em', fontSize: '0.7em', background: 'var(--bg-main)', color: 'white', border: '1px solid var(--accent-main)', color: '000', borderRadius: '4px', cursor: 'pointer' }}>🔊 Repeat</button>
+          <button onClick={() => speakAndTrack(summary)} style={{ marginTop: '0.8em', fontSize: '0.7em', background: 'var(--bg-main)', color: 'white', border: '1px solid var(--accent-main)', borderRadius: '4px', cursor: 'pointer' }}>🔊 Repeat</button>
         </div>
       )}
 
