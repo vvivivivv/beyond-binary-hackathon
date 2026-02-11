@@ -3,6 +3,7 @@ import { useSpeech } from './hooks/useSpeech';
 import VoiceInterface from './components/multimodal/VoiceInterface';
 import { VOICE_COMMANDS } from '../utils/constants';
 import { summarizeText, askQuestion } from '../lib/huggingface';
+import { getLocalDescription } from './visionEngine';
 
 function App() {
   const [pageData, setPageData] = useState(null);
@@ -10,6 +11,7 @@ function App() {
   const [targetTabId, setTargetTabId] = useState(null);
   const [summary, setSummary] = useState("");
   const [imgIndex, setImgIndex] = useState(-1);
+  const [progress, setProgress] = useState("");
   
   const speech = useSpeech();  
   const lastReadRef = useRef("");
@@ -53,41 +55,88 @@ function App() {
   };
 
   const handleScan = async () => {
+    if (loading) return;
     setLoading(true);
     setSummary("");
+    setPageData(null);
+    setProgress("Connecting to page...");
+
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
 
-    if (tab){
-      setTargetTabId(tab.id);
-      chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, async (response) => {
-        if (chrome.runtime.lastError || !response) {
-          try {
-            await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              files: ["content.js"]
-            });
-            setTimeout(() => {
-              chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (res) => {
-                if (res) {
-                  setPageData(res);
-                  speakAndTrack(`Connection restored. Scanned ${res.title}`);
-                }
-              });
-            }, 500);
-          } catch (err) {
-            speakAndTrack("Cannot access this page.");
-          }
-        } else {
-          setPageData(response);
-          setImgIndex(-1);
-          speakAndTrack(`Scanned ${response.title}.`);
-        }
-        setLoading(false);
-      });
-    } else {
+    if (!tab) {
       setLoading(false);
-      speakAndTrack("Please click on the webpage first.");
+      speakAndTrack("Please click on the webpage first so I can find it.");
+      return;
     }
+
+    setTargetTabId(tab.id);
+
+    const processImages = async (response) => {
+      setPageData(response);
+      setImgIndex(-1);
+      speakAndTrack(`Scanned ${response.title}. Structure is ready. Analyzing images.`);
+
+      const imagesToProcess = [...response.images];
+      
+      for (let i = 0; i < imagesToProcess.length; i++) {
+        const currentImg = imagesToProcess[i];
+        
+        if (!currentImg.isAccessible) {
+          setProgress(`Analyzing image ${i + 1}/${imagesToProcess.length}...`);
+          
+          try {
+            const semanticInfo = await getLocalDescription(currentImg.src);
+            
+            setPageData(prev => {
+              const updatedImages = [...prev.images];
+              updatedImages[i] = { 
+                ...updatedImages[i], 
+                aiInterpretedText: semanticInfo,
+                alt: `[AI Analysis]: ${semanticInfo}` 
+              };
+              return { ...prev, images: updatedImages };
+            });
+          } catch (err) {
+            console.error("Vision error for image", i, err);
+          }
+        }
+      }
+      setProgress("");
+      setLoading(false);
+      speakAndTrack("Page interpretation complete.");
+    };
+
+    chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, async (response) => {
+      if (chrome.runtime.lastError || !response) {
+        console.warn("Content script missing. Injecting manually...");
+        setProgress("Injecting assistive logic...");
+
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ["content.js"]
+          });
+
+          setTimeout(() => {
+            chrome.tabs.sendMessage(tab.id, { action: "SCAN_PAGE" }, (res) => {
+              if (res) {
+                processImages(res);
+              } else {
+                setLoading(false);
+                setProgress("Error: Cannot reach page.");
+                speakAndTrack("I'm having trouble connecting. Please refresh the webpage.");
+              }
+            });
+          }, 600);
+        } catch (err) {
+          setLoading(false);
+          setProgress("Permission denied.");
+          speakAndTrack("I cannot access this specific page. Try a standard website.");
+        }
+      } else {
+        processImages(response);
+      }
+    });
   };
 
   const handleSearch = async (query) => {
@@ -302,6 +351,23 @@ function App() {
               ))}
             </div>
           </section>
+
+          <section>
+            <h3>Images Analysis</h3>
+            {pageData.images.map((img, i) => (
+              <div key={i} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
+                <div style={{ color: img.isAccessible ? 'green' : '#d93025', fontWeight: 'bold' }}>
+                  {img.alt}
+                </div>
+                {img.aiInterpretedText && (
+                  <div style={{ fontSize: '0.9em', color: '#555', marginTop: '4px', fontStyle: 'italic' }}>
+                    🤖 Detected: {img.aiInterpretedText}
+                  </div>
+                )}
+              </div>
+            ))}
+          </section>
+
         </div>
       )}
     </div>
