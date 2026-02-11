@@ -88,9 +88,9 @@ The extension is built with React.js and Chrome Extension Manifest V3.
     This will generate production files in the dist/ folder.
 
 4. Load in Chrome:
-   - Navigate to chrome://extensions/ in Chrome
-   - Enable Developer mode
-   - Click Load Unpacked and select the generated dist/ folder
+   - Navigate to `chrome://extensions/` in Chrome
+   - Enable `Developer` mode
+   - Click `Load Unpacked` and select the generated `dist/` folder
    - The extension should now appear in your Chrome toolbar.
 
 5. Testing:
@@ -99,7 +99,7 @@ The extension is built with React.js and Chrome Extension Manifest V3.
     - This fictional university homepage intentionally contains 22+ accessbility issues, making it ideal for testing accessibility-related features.
 
     Image Detection Test
-    - Use the local file: imagetest.html located in the project root folder.
+    - Use the local file: `imagetest.html` located in the project root folder.
     - This file contains animals and everyday objects for testing image detection functionally.
 
     PDF OCR Testing
@@ -116,14 +116,19 @@ The extension is built with React.js and Chrome Extension Manifest V3.
 ## 🔮 Future Roadmap: Expanding Multimodal Nuance
 Our architecture is designed to be an extensible foundation for future assistive technologies:
 
-*   🤟 Sign Language Recognition: Leveraging computer vision to interpret regional sign language dialects and gestures into browser navigation commands, addressing the isolation mentioned in the hackathon challenge.
-*   📳 Haptic Navigation: Integrating haptic feedback APIs to provide tactile cues for users with low vision, indicating page boundaries or the presence of interactive elements.
-*   🤖 Local (Offline) AI: Transitioning from cloud-based Inference APIs to local ONNX models to ensure total user privacy, lower latency, and accessibility even without an active internet connection.
-*   🌍 Dialect & Context Awareness: Fine-tuning AI models to recognize non-standardized gestures and regional language variations to better support underserved global communities.
-
+*   🤟 Sign Language Recognition:
+      - Leveraging computer vision to interpret regional sign language dialects and gestures into browser navigation commands, addressing the isolation mentioned in the hackathon challenge.
+*   📳 Haptic Navigation:
+      - Integrating haptic feedback APIs to provide tactile cues for users with low vision, indicating page boundaries or the presence of interactive elements.
+*   🤖 Local (Offline) AI:
+      - Transitioning from cloud-based Inference APIs to local ONNX models to ensure total user privacy, lower latency, and accessibility even without an active internet connection.
+*   🌍 Dialect & Context Awareness:
+      - Fine-tuning AI models to recognize non-standardized gestures and regional language variations to better support underserved global communities.
+        
 ---
 
 > Universal Assist — *Fostering inclusive communities by interpreting the world, one page at a time.*
+
 
 
 
