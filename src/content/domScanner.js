@@ -31,7 +31,7 @@ export const scanPage = async () => {
     .filter(text => text.length > 50)
     .slice(0, 10);
 
-  // Images + AI interpretation
+  // Images + AI interpretation + OCR candidates
   const imageElements = Array.from(document.querySelectorAll("img")).filter(
     img =>
       img.src &&
@@ -79,7 +79,7 @@ export const scanPage = async () => {
       href: a.href
     }))
     .filter(l => l.text.length > 0 && l.href.startsWith('http'))
-    .slice(0, 15); // Increased limit slightly
+    .slice(0, 15);
 
       return {
         src: img.src,
