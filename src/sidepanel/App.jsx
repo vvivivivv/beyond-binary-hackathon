@@ -341,19 +341,8 @@ function App() {
             </div>
           </section>
 
-          <section style={{ marginTop: '15px' }}>
-            <h3 style={{ fontSize: '14px', color: '#1a73e8' }}>Image Analysis ({pageData.images.length})</h3>
-            <div style={{ fontSize: '12px' }}>
-              {pageData.images.map((img, i) => (
-                <div key={i} style={{ borderBottom: '1px solid #eee', padding: '8px 0', color: img.isAccessible ? '#1e8e3e' : '#d93025', background: imgIndex === i ? '#fff3cd' : 'transparent' }}>
-                  {img.isAccessible ? `✓ ${img.alt}` : `⚠ Missing: ${img.alt}`}
-                </div>
-              ))}
-            </div>
-          </section>
-
           <section>
-            <h3>Images Analysis</h3>
+            <h3>Images Analysis ({pageData.images.length})</h3>
             {pageData.images.map((img, i) => (
               <div key={i} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
                 <div style={{ color: img.isAccessible ? 'green' : '#d93025', fontWeight: 'bold' }}>
