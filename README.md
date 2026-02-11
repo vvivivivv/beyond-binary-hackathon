@@ -113,7 +113,6 @@ The extension is built with React.js and Chrome Extension Manifest V3.
 
 ---
 
-
 ## ⚖️ Judging Criteria Alignment
 
 | Criteria | How We Meet It |
@@ -141,6 +140,7 @@ Our architecture is designed to be an extensible foundation for future assistive
 ---
 
 > Universal Assist — *Fostering inclusive communities by interpreting the world, one page at a time.*
+
 
 
 
