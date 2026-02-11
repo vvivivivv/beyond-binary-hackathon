@@ -13,8 +13,8 @@ Universal Assist is a browser extension designed to provide a consistent, user-c
 - [Multimodal Innovation](#-multimodal-innovation)
 - [Technical Architecture](#-technical-architecture)
 - [Setup & Installation](#-setup--installation)
-- [Judging Criteria Alignment](#judging-criteria-alignment)
-- [Future Roadmap](#future-roadmap-expanding-multimodal-nuance)
+- [Judging Criteria Alignment](#-judging-criteria-alignment)
+- [Future Roadmap](#-future-roadmap-expanding-multimodal-nuance)
 
 ---
 
@@ -140,6 +140,7 @@ Our architecture is designed to be an extensible foundation for future assistive
 ---
 
 > Universal Assist — *Fostering inclusive communities by interpreting the world, one page at a time.*
+
 
 
 
